@@ -1,8 +1,10 @@
 import cake/internal/read_query
 import cake/select
 import gleam/bit_array
+import gleam/dynamic/decode
 import gleam/json
 import gleam/list
+import gleam/result
 
 pub type ReadQuery =
   select.ReadQuery
@@ -15,6 +17,18 @@ pub type PaginationError {
   InvalidPerPage(per_page: Int)
   /// The per_page value exceeds the maximum allowed.
   PerPageTooLarge(per_page: Int, max: Int)
+}
+
+/// Errors that can occur during cursor decoding.
+pub type CursorDecodeError {
+  /// The cursor contains invalid base64.
+  InvalidBase64
+  /// The cursor contains invalid JSON.
+  InvalidJson
+  /// The cursor JSON is not an array.
+  NotAnArray
+  /// The cursor array contains non-string values.
+  InvalidArrayElement
 }
 
 /// Represents a page of results with metadata for pagination.
@@ -286,4 +300,32 @@ pub fn encode_cursor(values vals: List(String)) -> Cursor {
   |> bit_array.from_string
   |> bit_array.base64_encode(True)
   |> Cursor
+}
+
+/// Decodes a cursor token back into a list of values.
+///
+/// This reverses the encoding done by `encode_cursor()`, returning the
+/// original list of string values or an error if the cursor is invalid.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let cursor = encode_cursor(["2024-01-15T10:30:00Z", "12345"])
+/// decode_cursor(cursor)
+/// // -> Ok(["2024-01-15T10:30:00Z", "12345"])
+///
+/// let bad_cursor = cursor_from_string("not-valid-base64!")
+/// decode_cursor(bad_cursor)
+/// // -> Error(InvalidBase64)
+/// ```
+pub fn decode_cursor(cursor c: Cursor) -> Result(List(String), CursorDecodeError) {
+  use decoded_bits <- result.try(
+    c.value
+    |> bit_array.base64_decode
+    |> result.replace_error(InvalidBase64),
+  )
+
+  decoded_bits
+  |> json.parse_bits(decode.list(decode.string))
+  |> result.map_error(fn(_) { InvalidJson })
 }
