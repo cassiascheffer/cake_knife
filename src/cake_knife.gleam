@@ -52,3 +52,28 @@ pub fn offset(query qry: ReadQuery, count cnt: Int) -> ReadQuery {
     read_query.CombinedQuery(_) -> qry
   }
 }
+
+/// Applies page-based pagination to a query using LIMIT and OFFSET.
+///
+/// Converts page numbers to LIMIT/OFFSET calculations:
+/// - Page 1 starts at offset 0
+/// - Page 2 starts at offset per_page
+/// - Formula: offset = (page - 1) * per_page
+///
+/// ## Examples
+///
+/// ```gleam
+/// import cake/select
+/// import cake_knife
+///
+/// select.new()
+/// |> select.from_table("users")
+/// |> cake_knife.page(page: 2, per_page: 10)
+/// // Equivalent to: limit(10) |> offset(10)
+/// ```
+pub fn page(query qry: ReadQuery, page pg: Int, per_page per_pg: Int) -> ReadQuery {
+  let offset_amount = { pg - 1 } * per_pg
+  qry
+  |> limit(per_pg)
+  |> offset(offset_amount)
+}
