@@ -14,6 +14,43 @@ pub type PaginationError {
   PerPageTooLarge(per_page: Int, max: Int)
 }
 
+/// Represents a page of results with metadata for pagination.
+///
+/// ## Fields
+///
+/// - `data`: The actual items on this page
+/// - `page`: Current page number (1-indexed)
+/// - `per_page`: Number of items per page
+/// - `total_count`: Total number of items across all pages
+/// - `total_pages`: Total number of pages
+/// - `has_previous`: Whether there is a previous page
+/// - `has_next`: Whether there is a next page
+///
+/// ## Examples
+///
+/// ```gleam
+/// Page(
+///   data: [user1, user2, user3],
+///   page: 2,
+///   per_page: 3,
+///   total_count: 10,
+///   total_pages: 4,
+///   has_previous: True,
+///   has_next: True,
+/// )
+/// ```
+pub type Page(a) {
+  Page(
+    data: List(a),
+    page: Int,
+    per_page: Int,
+    total_count: Int,
+    total_pages: Int,
+    has_previous: Bool,
+    has_next: Bool,
+  )
+}
+
 /// Adds a LIMIT clause to a query, restricting the number of rows returned.
 ///
 /// Negative values are clamped to 0 (which results in no LIMIT clause).
