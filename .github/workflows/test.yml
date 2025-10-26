@@ -19,5 +19,25 @@ jobs:
           rebar3-version: "3"
           # elixir-version: "1"
       - run: gleam deps download
+      - name: Start PostgreSQL container
+        run: docker compose up -d
+      - name: Wait for database to be ready
+        run: |
+          for i in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then
+              echo "Database is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Database failed to become ready in time"
+              docker compose logs
+              exit 1
+            fi
+            echo "Waiting for database... (attempt $i/30)"
+            sleep 1
+          done
       - run: gleam test
       - run: gleam format --check src test
+      - name: Stop PostgreSQL container
+        if: always()
+        run: docker compose down
