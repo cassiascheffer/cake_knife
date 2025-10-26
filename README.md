@@ -114,29 +114,55 @@ let page = cake_knife.new_page(
 
 ## Cursor Pagination
 
-Cake Knife provides types for cursor-based pagination. Cursor pagination is more efficient for large datasets as it uses keyset values instead of OFFSET.
+Cake Knife provides types and utilities for cursor-based pagination. Cursor pagination is more efficient for large datasets as it uses keyset values instead of OFFSET.
+
+### Encoding and Decoding Cursors
+
+```gleam
+import cake_knife
+import gleam/option.{Some, None}
+
+// Encode keyset values into an opaque cursor
+let cursor = cake_knife.encode_cursor(["2024-01-15T10:30:00Z", "12345"])
+
+// Decode a cursor back to values
+case cake_knife.decode_cursor(cursor) {
+  Ok(values) -> {
+    // values == ["2024-01-15T10:30:00Z", "12345"]
+    // Use these values in your WHERE clause for keyset pagination
+  }
+  Error(cake_knife.InvalidBase64) -> {
+    // Handle invalid base64
+  }
+  Error(cake_knife.InvalidJson) -> {
+    // Handle invalid JSON
+  }
+  Error(cake_knife.NotAnArray) -> {
+    // Handle wrong JSON structure
+  }
+}
+```
+
+### Working with CursorPage
 
 ```gleam
 import cake_knife
 import gleam/option.{Some}
 
-// Types are provided for cursor pagination
-pub type MyCursor {
-  MyCursor(timestamp: String, id: Int)
-}
+// After executing your cursor-based query, construct a CursorPage
+let first_item_cursor = cake_knife.encode_cursor(["2024-01-15", "100"])
+let last_item_cursor = cake_knife.encode_cursor(["2024-01-20", "150"])
 
-// Create a cursor from your keyset values
-let cursor = cake_knife.cursor_from_string("base64_encoded_cursor")
-
-// Use CursorPage type for results
 let cursor_page = cake_knife.CursorPage(
   data: items,
-  start_cursor: Some(first_cursor),
-  end_cursor: Some(last_cursor),
+  start_cursor: Some(first_item_cursor),
+  end_cursor: Some(last_item_cursor),
   has_next: True,
   has_previous: False,
 )
 ```
+
+**Note:** Cake Knife provides the types and cursor utilities, but you're responsible for implementing the keyset pagination WHERE clauses in your queries. This gives you full control over your pagination logic while keeping the library lightweight and adapter-agnostic.
 
 ## Offset vs Cursor Pagination
 
@@ -183,6 +209,7 @@ See the [Hex documentation](https://hexdocs.pm/cake_knife/) for complete API ref
 
 ### Key Functions
 
+**Offset Pagination:**
 - `limit(query, count)` - Add LIMIT clause
 - `offset(query, count)` - Add OFFSET clause
 - `page(query, page, per_page)` - Add LIMIT and OFFSET for page-based pagination
@@ -190,12 +217,19 @@ See the [Hex documentation](https://hexdocs.pm/cake_knife/) for complete API ref
 - `calculate_total_pages(total_count, per_page)` - Calculate number of pages
 - `new_page(data, page, per_page, total_count)` - Create Page with metadata
 
+**Cursor Pagination:**
+- `encode_cursor(values)` - Encode keyset values into an opaque cursor
+- `decode_cursor(cursor)` - Decode a cursor back to keyset values
+- `cursor_from_string(value)` - Create a cursor from a string
+- `cursor_to_string(cursor)` - Extract the string value from a cursor
+
 ### Types
 
 - `Page(a)` - Offset-based pagination result with metadata
 - `Cursor` - Opaque cursor for cursor-based pagination
 - `CursorPage(a)` - Cursor-based pagination result
 - `PaginationError` - Validation errors for pagination parameters
+- `CursorDecodeError` - Errors that can occur when decoding cursors
 
 ## Examples
 
