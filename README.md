@@ -237,9 +237,47 @@ Check the `test/` directory for comprehensive examples of all features.
 
 ## Development
 
+### Running Tests
+
+This project uses PostgreSQL for integration tests. Tests are run in a Docker container to ensure consistent behaviour across environments.
+
+**Prerequisites:**
+- Docker and Docker Compose installed and running
+
+**Running the test suite:**
+
+```sh
+# Run tests with Docker database (recommended)
+./scripts/test.sh
+
+# Or manually manage the database:
+docker compose up -d          # Start PostgreSQL
+gleam test                    # Run tests
+docker compose down           # Stop PostgreSQL
+```
+
+The test script automatically:
+1. Starts a PostgreSQL 17.6 container
+2. Waits for the database to be ready
+3. Runs the test suite
+4. Cleans up the container
+
+**Environment Variables:**
+
+You can customise the database connection using environment variables:
+
+```sh
+POSTGRES_HOST=localhost    # Default: localhost
+POSTGRES_PORT=5432         # Default: 5432
+POSTGRES_USER=postgres     # Default: postgres
+POSTGRES_PASSWORD=postgres # Default: postgres
+POSTGRES_DB=cake_knife_test # Default: cake_knife_test
+```
+
+**Other Development Commands:**
+
 ```sh
 gleam run   # Run the project
-gleam test  # Run the tests
 gleam build # Build the project
 ```
 
