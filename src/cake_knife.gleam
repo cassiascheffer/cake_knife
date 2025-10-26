@@ -325,7 +325,12 @@ pub fn decode_cursor(cursor c: Cursor) -> Result(List(String), CursorDecodeError
     |> result.replace_error(InvalidBase64),
   )
 
-  decoded_bits
-  |> json.parse_bits(decode.list(decode.string))
-  |> result.map_error(fn(_) { InvalidJson })
+  use parsed <- result.try(
+    decoded_bits
+    |> json.parse_bits(decode.dynamic)
+    |> result.map_error(fn(_) { InvalidJson }),
+  )
+
+  decode.run(parsed, decode.list(decode.string))
+  |> result.map_error(fn(_) { NotAnArray })
 }

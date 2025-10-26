@@ -304,3 +304,80 @@ pub fn single_page_result_test() {
   page.has_previous
   |> should.equal(False)
 }
+
+pub fn cursor_roundtrip_test() {
+  let values = ["2024-01-15T10:30:00Z", "12345"]
+  let cursor = cake_knife.encode_cursor(values)
+  let result = cake_knife.decode_cursor(cursor)
+
+  result
+  |> should.equal(Ok(values))
+}
+
+pub fn cursor_with_single_value_test() {
+  let values = ["single"]
+  let cursor = cake_knife.encode_cursor(values)
+  let result = cake_knife.decode_cursor(cursor)
+
+  result
+  |> should.equal(Ok(values))
+}
+
+pub fn cursor_with_multiple_values_test() {
+  let values = ["first", "second", "third", "fourth"]
+  let cursor = cake_knife.encode_cursor(values)
+  let result = cake_knife.decode_cursor(cursor)
+
+  result
+  |> should.equal(Ok(values))
+}
+
+pub fn cursor_with_empty_list_test() {
+  let values = []
+  let cursor = cake_knife.encode_cursor(values)
+  let result = cake_knife.decode_cursor(cursor)
+
+  result
+  |> should.equal(Ok(values))
+}
+
+pub fn cursor_with_special_characters_test() {
+  let values = ["hello \"world\"", "unicode: 🎉", "newline:\n", "tab:\t"]
+  let cursor = cake_knife.encode_cursor(values)
+  let result = cake_knife.decode_cursor(cursor)
+
+  result
+  |> should.equal(Ok(values))
+}
+
+pub fn decode_invalid_base64_test() {
+  let bad_cursor = cake_knife.cursor_from_string("not!valid@base64#")
+  let result = cake_knife.decode_cursor(bad_cursor)
+
+  result
+  |> should.equal(Error(cake_knife.InvalidBase64))
+}
+
+pub fn decode_invalid_json_test() {
+  let bad_cursor = cake_knife.cursor_from_string("aW52YWxpZCBqc29u")
+  let result = cake_knife.decode_cursor(bad_cursor)
+
+  result
+  |> should.equal(Error(cake_knife.InvalidJson))
+}
+
+pub fn decode_non_array_json_test() {
+  let bad_cursor = cake_knife.cursor_from_string("eyJub3QiOiJhbiBhcnJheSJ9")
+  let result = cake_knife.decode_cursor(bad_cursor)
+
+  result
+  |> should.equal(Error(cake_knife.NotAnArray))
+}
+
+pub fn cursor_is_opaque_test() {
+  let cursor = cake_knife.encode_cursor(["test"])
+  let cursor_string = cake_knife.cursor_to_string(cursor)
+
+  cursor_string
+  |> should.not_equal("test")
+}
