@@ -51,6 +51,14 @@ pub type Page(a) {
   )
 }
 
+/// An opaque cursor for cursor-based pagination.
+///
+/// Cursors encode position information (typically keyset values like
+/// timestamps and IDs) to enable efficient pagination without OFFSET.
+pub opaque type Cursor {
+  Cursor(value: String)
+}
+
 /// Adds a LIMIT clause to a query, restricting the number of rows returned.
 ///
 /// Negative values are clamped to 0 (which results in no LIMIT clause).
@@ -237,4 +245,17 @@ pub fn new_page(
     has_previous: pg > 1,
     has_next: pg < total_pages,
   )
+}
+
+/// Creates a cursor from a string value.
+///
+/// The string should typically be a base64-encoded representation
+/// of keyset values, but this function accepts any string.
+pub fn cursor_from_string(value val: String) -> Cursor {
+  Cursor(val)
+}
+
+/// Extracts the string value from a cursor.
+pub fn cursor_to_string(cursor c: Cursor) -> String {
+  c.value
 }
