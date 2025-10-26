@@ -19,3 +19,4 @@ gleam_json = ">= 3.0.2 and < 4.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
+cake_pog = ">= 1.0.0 and < 2.0.0"
