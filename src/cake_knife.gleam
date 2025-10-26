@@ -1,3 +1,28 @@
+//// Ergonomic pagination utilities for Cake SQL queries.
+////
+//// This module provides functions for both offset-based and cursor-based
+//// pagination, along with types for working with paginated results.
+////
+//// ## Offset Pagination
+////
+//// Use `limit()`, `offset()`, `page()`, and `paginate()` for traditional
+//// page-based pagination with LIMIT/OFFSET. The `Page(a)` type provides
+//// metadata like total pages, has_next, and has_previous.
+////
+//// ## Cursor Pagination
+////
+//// Use `Cursor`, `CursorPage(a)`, `encode_cursor()`, and `decode_cursor()`
+//// for efficient cursor-based pagination. This is recommended for large
+//// datasets where OFFSET performance becomes an issue.
+////
+//// ## Performance Considerations
+////
+//// - **Offset pagination**: Simple but slower with large offsets. Database
+////   must scan all skipped rows. Best for small to medium datasets.
+//// - **Cursor pagination**: Consistent performance regardless of position.
+////   Requires indexed keyset columns. Best for large datasets and infinite
+////   scroll interfaces.
+
 import cake/internal/read_query
 import cake/select
 import gleam/bit_array
@@ -7,6 +32,22 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 
+/// A type alias for Cake's ReadQuery type.
+///
+/// This represents a SQL SELECT query that can be paginated.
+/// All pagination functions in this module operate on ReadQuery values.
+///
+/// ## Examples
+///
+/// ```gleam
+/// import cake/select
+/// import cake_knife
+///
+/// let query: cake_knife.ReadQuery =
+///   select.new()
+///   |> select.from_table("users")
+///   |> select.to_query
+/// ```
 pub type ReadQuery =
   select.ReadQuery
 
@@ -303,11 +344,32 @@ pub fn new_page(
 ///
 /// The string should typically be a base64-encoded representation
 /// of keyset values, but this function accepts any string.
+///
+/// This is useful when receiving cursor tokens from API requests
+/// or other external sources.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let cursor = cursor_from_string("WyIyMDI0LTAxLTE1IiwiMTIzNDUiXQ==")
+/// // Can now decode this cursor to get the original values
+/// ```
 pub fn cursor_from_string(value val: String) -> Cursor {
   Cursor(val)
 }
 
 /// Extracts the string value from a cursor.
+///
+/// This is useful when sending cursor tokens in API responses
+/// or storing them for later use.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let cursor = encode_cursor(["2024-01-15", "12345"])
+/// let cursor_string = cursor_to_string(cursor)
+/// // cursor_string can now be sent to clients as an opaque token
+/// ```
 pub fn cursor_to_string(cursor c: Cursor) -> String {
   c.value
 }
