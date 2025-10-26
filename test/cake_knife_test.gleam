@@ -240,3 +240,67 @@ pub fn large_page_numbers_test() {
   sql
   |> should.equal("SELECT * FROM users LIMIT 50 OFFSET 49950")
 }
+
+pub fn total_pages_with_exact_division_test() {
+  cake_knife.calculate_total_pages(total_count: 100, per_page: 20)
+  |> should.equal(5)
+}
+
+pub fn total_pages_with_remainder_test() {
+  cake_knife.calculate_total_pages(total_count: 101, per_page: 20)
+  |> should.equal(6)
+}
+
+pub fn total_pages_with_small_remainder_test() {
+  cake_knife.calculate_total_pages(total_count: 10, per_page: 3)
+  |> should.equal(4)
+}
+
+pub fn zero_total_count_handling_test() {
+  cake_knife.calculate_total_pages(total_count: 0, per_page: 10)
+  |> should.equal(0)
+}
+
+pub fn new_page_has_next_true_when_more_pages_test() {
+  let page =
+    cake_knife.new_page(data: [], page: 2, per_page: 10, total_count: 50)
+
+  page.has_next
+  |> should.equal(True)
+}
+
+pub fn new_page_has_next_false_on_last_page_test() {
+  let page =
+    cake_knife.new_page(data: [], page: 5, per_page: 10, total_count: 50)
+
+  page.has_next
+  |> should.equal(False)
+}
+
+pub fn new_page_has_previous_false_on_first_page_test() {
+  let page =
+    cake_knife.new_page(data: [], page: 1, per_page: 10, total_count: 50)
+
+  page.has_previous
+  |> should.equal(False)
+}
+
+pub fn new_page_has_previous_true_on_later_pages_test() {
+  let page =
+    cake_knife.new_page(data: [], page: 2, per_page: 10, total_count: 50)
+
+  page.has_previous
+  |> should.equal(True)
+}
+
+pub fn single_page_result_test() {
+  let page =
+    cake_knife.new_page(data: [1, 2, 3], page: 1, per_page: 10, total_count: 3)
+
+  page.total_pages
+  |> should.equal(1)
+  page.has_next
+  |> should.equal(False)
+  page.has_previous
+  |> should.equal(False)
+}
