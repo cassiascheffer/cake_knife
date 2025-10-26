@@ -169,3 +169,72 @@ pub fn paginate(
       }
   }
 }
+
+/// Calculates the total number of pages given a total count and items per page.
+///
+/// Uses ceiling division to ensure partial pages are counted.
+///
+/// ## Examples
+///
+/// ```gleam
+/// calculate_total_pages(total_count: 10, per_page: 3)
+/// // -> 4
+///
+/// calculate_total_pages(total_count: 9, per_page: 3)
+/// // -> 3
+///
+/// calculate_total_pages(total_count: 0, per_page: 10)
+/// // -> 0
+/// ```
+pub fn calculate_total_pages(total_count total: Int, per_page per_pg: Int) -> Int {
+  case per_pg <= 0 {
+    True -> 0
+    False -> {
+      case total <= 0 {
+        True -> 0
+        False -> { total + per_pg - 1 } / per_pg
+      }
+    }
+  }
+}
+
+/// Creates a Page from results and metadata.
+///
+/// Automatically calculates total_pages, has_previous, and has_next.
+///
+/// ## Examples
+///
+/// ```gleam
+/// new_page(
+///   data: [user1, user2, user3],
+///   page: 2,
+///   per_page: 3,
+///   total_count: 10,
+/// )
+/// // -> Page(
+/// //   data: [user1, user2, user3],
+/// //   page: 2,
+/// //   per_page: 3,
+/// //   total_count: 10,
+/// //   total_pages: 4,
+/// //   has_previous: True,
+/// //   has_next: True,
+/// // )
+/// ```
+pub fn new_page(
+  data d: List(a),
+  page pg: Int,
+  per_page per_pg: Int,
+  total_count total: Int,
+) -> Page(a) {
+  let total_pages = calculate_total_pages(total, per_pg)
+  Page(
+    data: d,
+    page: pg,
+    per_page: per_pg,
+    total_count: total,
+    total_pages: total_pages,
+    has_previous: pg > 1,
+    has_next: pg < total_pages,
+  )
+}
