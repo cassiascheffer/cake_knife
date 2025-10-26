@@ -1,5 +1,8 @@
 import cake/internal/read_query
 import cake/select
+import gleam/bit_array
+import gleam/json
+import gleam/list
 
 pub type ReadQuery =
   select.ReadQuery
@@ -258,4 +261,29 @@ pub fn cursor_from_string(value val: String) -> Cursor {
 /// Extracts the string value from a cursor.
 pub fn cursor_to_string(cursor c: Cursor) -> String {
   c.value
+}
+
+/// Encodes a list of values into an opaque cursor token.
+///
+/// The values are JSON-encoded and base64-encoded to create an opaque cursor.
+/// This is useful for cursor-based pagination where you want to encode keyset
+/// values (like timestamp and ID) into a single cursor token.
+///
+/// ## Examples
+///
+/// ```gleam
+/// encode_cursor(["2024-01-15T10:30:00Z", "12345"])
+/// // -> Cursor with base64-encoded JSON array
+///
+/// encode_cursor([])
+/// // -> Cursor with base64-encoded empty array
+/// ```
+pub fn encode_cursor(values vals: List(String)) -> Cursor {
+  vals
+  |> list.map(json.string)
+  |> json.array(of: fn(x) { x })
+  |> json.to_string
+  |> bit_array.from_string
+  |> bit_array.base64_encode(True)
+  |> Cursor
 }
