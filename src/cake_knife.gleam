@@ -4,6 +4,7 @@ import gleam/bit_array
 import gleam/dynamic/decode
 import gleam/json
 import gleam/list
+import gleam/option.{type Option}
 import gleam/result
 
 pub type ReadQuery =
@@ -74,6 +75,40 @@ pub type Page(a) {
 /// timestamps and IDs) to enable efficient pagination without OFFSET.
 pub opaque type Cursor {
   Cursor(value: String)
+}
+
+/// Represents a page of results using cursor-based pagination.
+///
+/// Cursor-based pagination is more efficient than offset-based pagination
+/// for large datasets, as it uses keyset values instead of OFFSET.
+///
+/// ## Fields
+///
+/// - `data`: The actual items on this page
+/// - `start_cursor`: Cursor of the first item (None if no results)
+/// - `end_cursor`: Cursor of the last item (None if no results)
+/// - `has_next`: Whether there are more results after end_cursor
+/// - `has_previous`: Whether there are results before start_cursor
+///
+/// ## Examples
+///
+/// ```gleam
+/// CursorPage(
+///   data: [item1, item2, item3],
+///   start_cursor: Some(cursor1),
+///   end_cursor: Some(cursor3),
+///   has_next: True,
+///   has_previous: False,
+/// )
+/// ```
+pub type CursorPage(a) {
+  CursorPage(
+    data: List(a),
+    start_cursor: Option(Cursor),
+    end_cursor: Option(Cursor),
+    has_next: Bool,
+    has_previous: Bool,
+  )
 }
 
 /// Adds a LIMIT clause to a query, restricting the number of rows returned.
