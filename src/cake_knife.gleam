@@ -4,6 +4,16 @@ import cake/select
 pub type ReadQuery =
   select.ReadQuery
 
+/// Errors that can occur during pagination validation.
+pub type PaginationError {
+  /// The page number must be at least 1.
+  InvalidPage(page: Int)
+  /// The per_page value must be at least 1.
+  InvalidPerPage(per_page: Int)
+  /// The per_page value exceeds the maximum allowed.
+  PerPageTooLarge(per_page: Int, max: Int)
+}
+
 /// Adds a LIMIT clause to a query, restricting the number of rows returned.
 ///
 /// Negative values are clamped to 0 (which results in no LIMIT clause).
@@ -60,6 +70,8 @@ pub fn offset(query qry: ReadQuery, count cnt: Int) -> ReadQuery {
 /// - Page 2 starts at offset per_page
 /// - Formula: offset = (page - 1) * per_page
 ///
+/// Note: This function does not validate inputs. For validation, use `paginate()`.
+///
 /// ## Examples
 ///
 /// ```gleam
@@ -76,4 +88,47 @@ pub fn page(query qry: ReadQuery, page pg: Int, per_page per_pg: Int) -> ReadQue
   qry
   |> limit(per_pg)
   |> offset(offset_amount)
+}
+
+/// Applies validated page-based pagination to a query.
+///
+/// Validates that:
+/// - `page` is at least 1
+/// - `per_page` is at least 1
+/// - `per_page` does not exceed `max_per_page`
+///
+/// ## Examples
+///
+/// ```gleam
+/// import cake/select
+/// import cake_knife
+///
+/// select.new()
+/// |> select.from_table("users")
+/// |> cake_knife.paginate(page: 2, per_page: 10, max_per_page: 100)
+/// // -> Ok(query with LIMIT 10 OFFSET 10)
+///
+/// select.new()
+/// |> select.from_table("users")
+/// |> cake_knife.paginate(page: 0, per_page: 10, max_per_page: 100)
+/// // -> Error(InvalidPage(0))
+/// ```
+pub fn paginate(
+  query qry: ReadQuery,
+  page pg: Int,
+  per_page per_pg: Int,
+  max_per_page max_per_pg: Int,
+) -> Result(ReadQuery, PaginationError) {
+  case pg < 1 {
+    True -> Error(InvalidPage(pg))
+    False ->
+      case per_pg < 1 {
+        True -> Error(InvalidPerPage(per_pg))
+        False ->
+          case per_pg > max_per_pg {
+            True -> Error(PerPageTooLarge(per_pg, max_per_pg))
+            False -> Ok(page(qry, pg, per_pg))
+          }
+      }
+  }
 }
