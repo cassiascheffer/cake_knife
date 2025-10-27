@@ -11,6 +11,15 @@ pub fn create_items_table() -> String {
   )"
 }
 
+pub fn create_items_table_sqlite() -> String {
+  "CREATE TABLE items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    position INTEGER NOT NULL
+  )"
+}
+
 pub fn insert_items_rows() -> String {
   "INSERT INTO items (name, created_at, position) VALUES
     ('Item 1', '2024-01-01 10:00:00', 1),

@@ -349,3 +349,213 @@ pub fn cursor_is_opaque_test() {
 
   assert cursor_string != "test"
 }
+
+pub fn keyset_where_after_single_column_desc_test() {
+  let cursor = cake_knife.encode_cursor(["2024-01-15"])
+  let keyset_cols = [cake_knife.KeysetColumn("created_at", cake_knife.Desc)]
+
+  let assert Ok(where_clause) =
+    cake_knife.keyset_where_after(cursor, keyset_cols)
+
+  let query =
+    select.new()
+    |> select.from_table("posts")
+    |> select.where(where_clause)
+    |> select.to_query
+
+  let sql =
+    query
+    |> cake.read_query_to_prepared_statement(dialect: dialect.Postgres)
+    |> cake.get_sql
+
+  assert sql == "SELECT * FROM posts WHERE created_at < $1"
+}
+
+pub fn keyset_where_after_single_column_asc_test() {
+  let cursor = cake_knife.encode_cursor(["2024-01-15"])
+  let keyset_cols = [cake_knife.KeysetColumn("created_at", cake_knife.Asc)]
+
+  let assert Ok(where_clause) =
+    cake_knife.keyset_where_after(cursor, keyset_cols)
+
+  let query =
+    select.new()
+    |> select.from_table("posts")
+    |> select.where(where_clause)
+    |> select.to_query
+
+  let sql =
+    query
+    |> cake.read_query_to_prepared_statement(dialect: dialect.Postgres)
+    |> cake.get_sql
+
+  assert sql == "SELECT * FROM posts WHERE created_at > $1"
+}
+
+pub fn keyset_where_after_two_columns_desc_test() {
+  let cursor = cake_knife.encode_cursor(["2024-01-15", "100"])
+  let keyset_cols = [
+    cake_knife.KeysetColumn("created_at", cake_knife.Desc),
+    cake_knife.KeysetColumn("id", cake_knife.Desc),
+  ]
+
+  let assert Ok(where_clause) =
+    cake_knife.keyset_where_after(cursor, keyset_cols)
+
+  let query =
+    select.new()
+    |> select.from_table("posts")
+    |> select.where(where_clause)
+    |> select.to_query
+
+  let sql =
+    query
+    |> cake.read_query_to_prepared_statement(dialect: dialect.Postgres)
+    |> cake.get_sql
+
+  assert sql
+    == "SELECT * FROM posts WHERE (created_at < $1 OR created_at = $2 AND id < $3)"
+}
+
+pub fn keyset_where_after_two_columns_asc_test() {
+  let cursor = cake_knife.encode_cursor(["2024-01-15", "100"])
+  let keyset_cols = [
+    cake_knife.KeysetColumn("created_at", cake_knife.Asc),
+    cake_knife.KeysetColumn("id", cake_knife.Asc),
+  ]
+
+  let assert Ok(where_clause) =
+    cake_knife.keyset_where_after(cursor, keyset_cols)
+
+  let query =
+    select.new()
+    |> select.from_table("posts")
+    |> select.where(where_clause)
+    |> select.to_query
+
+  let sql =
+    query
+    |> cake.read_query_to_prepared_statement(dialect: dialect.Postgres)
+    |> cake.get_sql
+
+  assert sql
+    == "SELECT * FROM posts WHERE (created_at > $1 OR created_at = $2 AND id > $3)"
+}
+
+pub fn keyset_where_after_three_columns_desc_test() {
+  let cursor = cake_knife.encode_cursor(["2024-01-15", "100", "42"])
+  let keyset_cols = [
+    cake_knife.KeysetColumn("created_at", cake_knife.Desc),
+    cake_knife.KeysetColumn("id", cake_knife.Desc),
+    cake_knife.KeysetColumn("version", cake_knife.Desc),
+  ]
+
+  let assert Ok(where_clause) =
+    cake_knife.keyset_where_after(cursor, keyset_cols)
+
+  let query =
+    select.new()
+    |> select.from_table("posts")
+    |> select.where(where_clause)
+    |> select.to_query
+
+  let sql =
+    query
+    |> cake.read_query_to_prepared_statement(dialect: dialect.Postgres)
+    |> cake.get_sql
+
+  assert sql
+    == "SELECT * FROM posts WHERE (created_at < $1 OR created_at = $2 AND (id < $3 OR id = $4 AND version < $5))"
+}
+
+pub fn keyset_where_before_single_column_desc_test() {
+  let cursor = cake_knife.encode_cursor(["2024-01-15"])
+  let keyset_cols = [cake_knife.KeysetColumn("created_at", cake_knife.Desc)]
+
+  let assert Ok(where_clause) =
+    cake_knife.keyset_where_before(cursor, keyset_cols)
+
+  let query =
+    select.new()
+    |> select.from_table("posts")
+    |> select.where(where_clause)
+    |> select.to_query
+
+  let sql =
+    query
+    |> cake.read_query_to_prepared_statement(dialect: dialect.Postgres)
+    |> cake.get_sql
+
+  assert sql == "SELECT * FROM posts WHERE created_at > $1"
+}
+
+pub fn keyset_where_before_two_columns_desc_test() {
+  let cursor = cake_knife.encode_cursor(["2024-01-15", "100"])
+  let keyset_cols = [
+    cake_knife.KeysetColumn("created_at", cake_knife.Desc),
+    cake_knife.KeysetColumn("id", cake_knife.Desc),
+  ]
+
+  let assert Ok(where_clause) =
+    cake_knife.keyset_where_before(cursor, keyset_cols)
+
+  let query =
+    select.new()
+    |> select.from_table("posts")
+    |> select.where(where_clause)
+    |> select.to_query
+
+  let sql =
+    query
+    |> cake.read_query_to_prepared_statement(dialect: dialect.Postgres)
+    |> cake.get_sql
+
+  assert sql
+    == "SELECT * FROM posts WHERE (created_at > $1 OR created_at = $2 AND id > $3)"
+}
+
+pub fn keyset_where_after_mixed_directions_test() {
+  let cursor = cake_knife.encode_cursor(["2024-01-15", "100"])
+  let keyset_cols = [
+    cake_knife.KeysetColumn("created_at", cake_knife.Desc),
+    cake_knife.KeysetColumn("id", cake_knife.Asc),
+  ]
+
+  let assert Ok(where_clause) =
+    cake_knife.keyset_where_after(cursor, keyset_cols)
+
+  let query =
+    select.new()
+    |> select.from_table("posts")
+    |> select.where(where_clause)
+    |> select.to_query
+
+  let sql =
+    query
+    |> cake.read_query_to_prepared_statement(dialect: dialect.Postgres)
+    |> cake.get_sql
+
+  assert sql
+    == "SELECT * FROM posts WHERE (created_at < $1 OR created_at = $2 AND id > $3)"
+}
+
+pub fn keyset_where_after_mismatched_cursor_length_test() {
+  let cursor = cake_knife.encode_cursor(["2024-01-15"])
+  let keyset_cols = [
+    cake_knife.KeysetColumn("created_at", cake_knife.Desc),
+    cake_knife.KeysetColumn("id", cake_knife.Desc),
+  ]
+
+  let result = cake_knife.keyset_where_after(cursor, keyset_cols)
+
+  assert result == Error(cake_knife.MismatchedCursorLength(expected: 2, got: 1))
+}
+
+pub fn keyset_where_after_invalid_cursor_test() {
+  let bad_cursor = cake_knife.cursor_from_string("not-valid-base64!")
+  let keyset_cols = [cake_knife.KeysetColumn("created_at", cake_knife.Desc)]
+
+  let result = cake_knife.keyset_where_after(bad_cursor, keyset_cols)
+
+  assert result == Error(cake_knife.InvalidCursor(cake_knife.InvalidBase64))
+}

@@ -25,6 +25,7 @@
 
 import cake/internal/read_query
 import cake/select
+import cake/where
 import gleam/bit_array
 import gleam/dynamic/decode
 import gleam/json
@@ -71,6 +72,36 @@ pub type CursorDecodeError {
   NotAnArray
   /// The cursor array contains non-string values.
   InvalidArrayElement
+}
+
+/// Errors that can occur during keyset pagination.
+pub type KeysetError {
+  /// The cursor could not be decoded.
+  InvalidCursor(CursorDecodeError)
+  /// The cursor has a different number of values than expected columns.
+  MismatchedCursorLength(expected: Int, got: Int)
+}
+
+/// Defines the sort direction for a keyset column.
+pub type OrderDirection {
+  /// Ascending order (smallest to largest).
+  Asc
+  /// Descending order (largest to smallest).
+  Desc
+}
+
+/// Describes a column used in keyset pagination.
+///
+/// The column name and direction must match your ORDER BY clause.
+///
+/// ## Examples
+///
+/// ```gleam
+/// KeysetColumn("created_at", Desc)
+/// KeysetColumn("id", Asc)
+/// ```
+pub type KeysetColumn {
+  KeysetColumn(name: String, direction: OrderDirection)
 }
 
 /// Represents a page of results with metadata for pagination.
@@ -439,4 +470,190 @@ pub fn decode_cursor(
 
   decode.run(parsed, decode.list(decode.string))
   |> result.map_error(fn(_) { NotAnArray })
+}
+
+/// Builds a WHERE clause for keyset pagination going forward (after a cursor).
+///
+/// This function automatically generates the appropriate WHERE clause for
+/// keyset pagination based on your cursor and column definitions. It works
+/// with all database adapters by using expanded OR/AND conditions.
+///
+/// ## Parameters
+///
+/// - `cursor`: The cursor from the last item of the previous page
+/// - `columns`: List of columns in your ORDER BY clause with their directions
+///
+/// ## Examples
+///
+/// ```gleam
+/// // For ORDER BY created_at DESC, id DESC
+/// let keyset_cols = [
+///   KeysetColumn("created_at", Desc),
+///   KeysetColumn("id", Desc),
+/// ]
+///
+/// case after_cursor {
+///   Some(cursor) -> {
+///     use where_clause <- result.try(
+///       cake_knife.keyset_where_after(cursor, keyset_cols)
+///     )
+///     base_query |> select.where(where_clause)
+///   }
+///   None -> base_query
+/// }
+/// ```
+///
+/// ## How it works
+///
+/// For descending columns `(created_at DESC, id DESC)` with cursor values `[t, i]`,
+/// generates: `WHERE created_at < t OR (created_at = t AND id < i)`
+///
+/// For ascending columns `(created_at ASC, id ASC)` with cursor values `[t, i]`,
+/// generates: `WHERE created_at > t OR (created_at = t AND id > i)`
+pub fn keyset_where_after(
+  cursor c: Cursor,
+  columns cols: List(KeysetColumn),
+) -> Result(where.Where, KeysetError) {
+  use values <- result.try(
+    decode_cursor(c)
+    |> result.map_error(InvalidCursor),
+  )
+
+  let expected_len = list.length(cols)
+  let got_len = list.length(values)
+
+  use <- result_guard(
+    expected_len != got_len,
+    Error(MismatchedCursorLength(expected: expected_len, got: got_len)),
+  )
+
+  // Build the WHERE clause by iterating through columns
+  build_keyset_where_clause(cols, values, Forward)
+  |> Ok
+}
+
+/// Builds a WHERE clause for keyset pagination going backward (before a cursor).
+///
+/// This function automatically generates the appropriate WHERE clause for
+/// keyset pagination going in reverse. It works with all database adapters.
+///
+/// ## Parameters
+///
+/// - `cursor`: The cursor from the first item of the current page
+/// - `columns`: List of columns in your ORDER BY clause with their directions
+///
+/// ## Examples
+///
+/// ```gleam
+/// // For ORDER BY created_at DESC, id DESC
+/// let keyset_cols = [
+///   KeysetColumn("created_at", Desc),
+///   KeysetColumn("id", Desc),
+/// ]
+///
+/// use where_clause <- result.try(
+///   cake_knife.keyset_where_before(cursor, keyset_cols)
+/// )
+///
+/// // Note: Reverse the ORDER BY for backward pagination
+/// query
+/// |> select.order_by_asc("created_at")
+/// |> select.order_by_asc("id")
+/// |> select.where(where_clause)
+/// ```
+///
+/// ## How it works
+///
+/// For descending columns `(created_at DESC, id DESC)` with cursor values `[t, i]`,
+/// generates: `WHERE created_at > t OR (created_at = t AND id > i)`
+///
+/// This is the inverse of `keyset_where_after`.
+pub fn keyset_where_before(
+  cursor c: Cursor,
+  columns cols: List(KeysetColumn),
+) -> Result(where.Where, KeysetError) {
+  use values <- result.try(
+    decode_cursor(c)
+    |> result.map_error(InvalidCursor),
+  )
+
+  let expected_len = list.length(cols)
+  let got_len = list.length(values)
+
+  use <- result_guard(
+    expected_len != got_len,
+    Error(MismatchedCursorLength(expected: expected_len, got: got_len)),
+  )
+
+  // Build the WHERE clause by iterating through columns (inverted)
+  build_keyset_where_clause(cols, values, Backward)
+  |> Ok
+}
+
+// ┌───────────────────────────────────────────────────────────────────────────┐
+// │  Internal helper functions                                                │
+// └───────────────────────────────────────────────────────────────────────────┘
+
+type Direction {
+  Forward
+  Backward
+}
+
+fn result_guard(
+  condition: Bool,
+  return: Result(a, e),
+  continue: fn() -> Result(a, e),
+) -> Result(a, e) {
+  case condition {
+    True -> return
+    False -> continue()
+  }
+}
+
+/// Builds a keyset WHERE clause using expanded OR/AND conditions.
+///
+/// For columns (a DESC, b DESC) and values (x, y), generates:
+/// Forward: a < x OR (a = x AND b < y)
+/// Backward: a > x OR (a = x AND b > y)
+///
+/// For columns (a, b, c) and values (x, y, z), generates:
+/// a < x OR (a = x AND (b < y OR (b = y AND c < z)))
+fn build_keyset_where_clause(
+  columns: List(KeysetColumn),
+  values: List(String),
+  direction: Direction,
+) -> where.Where {
+  case columns, values {
+    [], [] -> where.none()
+    [KeysetColumn(col, dir)], [val] ->
+      // Single column: simple comparison
+      build_single_comparison(col, val, dir, direction)
+    [KeysetColumn(col, dir), ..rest_cols], [val, ..rest_vals] ->
+      // Multiple columns: col < val OR (col = val AND <rest>)
+      where.or([
+        build_single_comparison(col, val, dir, direction),
+        where.and([
+          where.eq(where.col(col), where.string(val)),
+          build_keyset_where_clause(rest_cols, rest_vals, direction),
+        ]),
+      ])
+    _, _ -> where.none()
+  }
+}
+
+/// Builds a single comparison for a column.
+fn build_single_comparison(
+  column: String,
+  value: String,
+  column_direction: OrderDirection,
+  pagination_direction: Direction,
+) -> where.Where {
+  let comparison = case column_direction, pagination_direction {
+    Desc, Forward -> where.lt
+    Desc, Backward -> where.gt
+    Asc, Forward -> where.gt
+    Asc, Backward -> where.lt
+  }
+
+  comparison(where.col(column), where.string(value))
 }
