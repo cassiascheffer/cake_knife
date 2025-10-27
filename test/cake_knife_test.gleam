@@ -353,7 +353,11 @@ pub fn cursor_is_opaque_test() {
 pub fn keyset_where_after_single_column_desc_test() {
   let cursor = cake_knife.encode_cursor(["2024-01-15"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.TimestampType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.TimestampType,
+    ),
   ]
 
   let assert Ok(where_clause) =
@@ -376,7 +380,11 @@ pub fn keyset_where_after_single_column_desc_test() {
 pub fn keyset_where_after_single_column_asc_test() {
   let cursor = cake_knife.encode_cursor(["2024-01-15"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Asc, cake_knife.TimestampType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Asc,
+      cake_knife.TimestampType,
+    ),
   ]
 
   let assert Ok(where_clause) =
@@ -399,7 +407,11 @@ pub fn keyset_where_after_single_column_asc_test() {
 pub fn keyset_where_after_two_columns_desc_test() {
   let cursor = cake_knife.encode_cursor(["2024-01-15", "100"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.TimestampType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.TimestampType,
+    ),
     cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
   ]
 
@@ -424,7 +436,11 @@ pub fn keyset_where_after_two_columns_desc_test() {
 pub fn keyset_where_after_two_columns_asc_test() {
   let cursor = cake_knife.encode_cursor(["2024-01-15", "100"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Asc, cake_knife.TimestampType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Asc,
+      cake_knife.TimestampType,
+    ),
     cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
   ]
 
@@ -449,7 +465,11 @@ pub fn keyset_where_after_two_columns_asc_test() {
 pub fn keyset_where_after_three_columns_desc_test() {
   let cursor = cake_knife.encode_cursor(["2024-01-15", "100", "42"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.TimestampType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.TimestampType,
+    ),
     cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
     cake_knife.KeysetColumn("version", cake_knife.Desc, cake_knife.IntType),
   ]
@@ -475,7 +495,11 @@ pub fn keyset_where_after_three_columns_desc_test() {
 pub fn keyset_where_before_single_column_desc_test() {
   let cursor = cake_knife.encode_cursor(["2024-01-15"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.TimestampType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.TimestampType,
+    ),
   ]
 
   let assert Ok(where_clause) =
@@ -498,7 +522,11 @@ pub fn keyset_where_before_single_column_desc_test() {
 pub fn keyset_where_before_two_columns_desc_test() {
   let cursor = cake_knife.encode_cursor(["2024-01-15", "100"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.TimestampType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.TimestampType,
+    ),
     cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
   ]
 
@@ -523,7 +551,11 @@ pub fn keyset_where_before_two_columns_desc_test() {
 pub fn keyset_where_after_mixed_directions_test() {
   let cursor = cake_knife.encode_cursor(["2024-01-15", "100"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.TimestampType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.TimestampType,
+    ),
     cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
   ]
 
@@ -548,7 +580,11 @@ pub fn keyset_where_after_mixed_directions_test() {
 pub fn keyset_where_after_mismatched_cursor_length_test() {
   let cursor = cake_knife.encode_cursor(["2024-01-15"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.StringType,
+    ),
     cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
   ]
 
@@ -560,7 +596,11 @@ pub fn keyset_where_after_mismatched_cursor_length_test() {
 pub fn keyset_where_after_invalid_cursor_test() {
   let bad_cursor = cake_knife.cursor_from_string("not-valid-base64!")
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.StringType,
+    ),
   ]
 
   let result = cake_knife.keyset_where_after(bad_cursor, keyset_cols)

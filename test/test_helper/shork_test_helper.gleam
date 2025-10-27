@@ -40,8 +40,7 @@ fn with_local_test_connection(callback callback) {
 pub fn setup_and_run(query) {
   use conn <- with_local_test_connection
 
-  let _ =
-    test_data.drop_items_table_if_exists() |> mysql.execute_raw_sql(conn)
+  let _ = test_data.drop_items_table_if_exists() |> mysql.execute_raw_sql(conn)
   let _ = test_data.create_items_table_mysql() |> mysql.execute_raw_sql(conn)
   let _ = test_data.insert_items_rows() |> mysql.execute_raw_sql(conn)
 
@@ -69,8 +68,7 @@ pub fn setup_empty_and_run(query) {
 pub fn setup_single_item_and_run(query) {
   use conn <- with_local_test_connection
 
-  let _ =
-    test_data.drop_items_table_if_exists() |> mysql.execute_raw_sql(conn)
+  let _ = test_data.drop_items_table_if_exists() |> mysql.execute_raw_sql(conn)
   let _ = test_data.create_items_table_mysql() |> mysql.execute_raw_sql(conn)
   let _ = test_data.insert_single_item() |> mysql.execute_raw_sql(conn)
 
@@ -80,8 +78,7 @@ pub fn setup_single_item_and_run(query) {
 pub fn setup_two_items_and_run(query) {
   use conn <- with_local_test_connection
 
-  let _ =
-    test_data.drop_items_table_if_exists() |> mysql.execute_raw_sql(conn)
+  let _ = test_data.drop_items_table_if_exists() |> mysql.execute_raw_sql(conn)
   let _ = test_data.create_items_table_mysql() |> mysql.execute_raw_sql(conn)
   let _ = test_data.insert_two_items() |> mysql.execute_raw_sql(conn)
 

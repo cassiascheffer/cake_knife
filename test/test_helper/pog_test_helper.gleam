@@ -77,8 +77,7 @@ pub fn setup_and_run(query) {
 pub fn setup_empty_and_run(query) {
   use conn <- with_local_test_connection
 
-  let _ =
-    "DROP TABLE IF EXISTS empty_items" |> postgres.execute_raw_sql(conn)
+  let _ = "DROP TABLE IF EXISTS empty_items" |> postgres.execute_raw_sql(conn)
   let _ =
     "CREATE TABLE empty_items (
       id SERIAL PRIMARY KEY,

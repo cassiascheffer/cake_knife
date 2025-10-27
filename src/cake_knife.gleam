@@ -666,13 +666,15 @@ fn build_keyset_where_clause(
         direction,
       ))
 
-      Ok(where.or([
-        comparison_where,
-        where.and([
-          where.eq(where.col(col), equality_value),
-          rest_where,
+      Ok(
+        where.or([
+          comparison_where,
+          where.and([
+            where.eq(where.col(col), equality_value),
+            rest_where,
+          ]),
         ]),
-      ]))
+      )
     }
     _, _ -> Ok(where.none())
   }
@@ -697,8 +699,7 @@ fn parse_value_for_type(
       // Use literal timestamp with TIMESTAMP cast for PostgreSQL compatibility
       // This avoids parameter type checking issues in pog
       // Note: Value must be from trusted cursor (base64 encoded), not user input
-      let timestamp_fragment =
-        fragment.literal("'" <> value <> "'::timestamp")
+      let timestamp_fragment = fragment.literal("'" <> value <> "'::timestamp")
       Ok(where.fragment_value(timestamp_fragment))
     }
   }

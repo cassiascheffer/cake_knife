@@ -311,7 +311,11 @@ pub fn keyset_pagination_forward_single_column_desc_test() {
   // For second page, use keyset pagination with cursor from last item
   let cursor = cake_knife.encode_cursor(["2024-01-05 15:00:00"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.StringType,
+    ),
   ]
 
   let assert Ok(where_clause) =
@@ -348,7 +352,11 @@ pub fn keyset_pagination_forward_two_columns_desc_test() {
   // For second page, use keyset with both columns
   let cursor = cake_knife.encode_cursor(["2024-01-05 15:00:00", "46"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.StringType,
+    ),
     cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
   ]
 
@@ -412,7 +420,11 @@ pub fn keyset_pagination_backward_single_column_test() {
   // Start from item at position 30
   let cursor = cake_knife.encode_cursor(["2024-01-03 19:00:00"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.StringType,
+    ),
   ]
 
   let assert Ok(where_clause) =
@@ -627,7 +639,11 @@ pub fn keyset_pagination_three_columns_test() {
   // For second page with three columns
   let cursor = cake_knife.encode_cursor(["2024-01-05 15:00:00", "46", "46"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+    cake_knife.KeysetColumn(
+      "created_at",
+      cake_knife.Desc,
+      cake_knife.StringType,
+    ),
     cake_knife.KeysetColumn("position", cake_knife.Desc, cake_knife.IntType),
     cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
   ]
@@ -837,12 +853,10 @@ pub fn offset_pagination_with_date_filter_test() {
   let query =
     select.new()
     |> select.from_table("items")
-    |> select.where(
-      where.gte(
-        where.col("created_at"),
-        where.string("2024-01-03 00:00:00"),
-      ),
-    )
+    |> select.where(where.gte(
+      where.col("created_at"),
+      where.string("2024-01-03 00:00:00"),
+    ))
     |> select.order_by_asc("position")
     |> select.to_query
     |> cake_knife.page(page: 1, per_page: 15)
@@ -880,10 +894,12 @@ pub fn cursor_pagination_with_where_clause_test() {
   let query_page2 =
     select.new()
     |> select.from_table("items")
-    |> select.where(where.and([
-      where.lte(where.col("position"), where.int(30)),
-      where_clause,
-    ]))
+    |> select.where(
+      where.and([
+        where.lte(where.col("position"), where.int(30)),
+        where_clause,
+      ]),
+    )
     |> select.order_by_asc("position")
     |> select.order_by_asc("id")
     |> select.to_query
@@ -900,10 +916,12 @@ pub fn cursor_pagination_with_complex_where_test() {
   let query =
     select.new()
     |> select.from_table("items")
-    |> select.where(where.and([
-      where.gt(where.col("position"), where.int(10)),
-      where.lte(where.col("position"), where.int(40)),
-    ]))
+    |> select.where(
+      where.and([
+        where.gt(where.col("position"), where.int(10)),
+        where.lte(where.col("position"), where.int(40)),
+      ]),
+    )
     |> select.order_by_desc("position")
     |> select.to_query
     |> cake_knife.limit(15)
