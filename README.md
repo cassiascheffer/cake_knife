@@ -164,45 +164,6 @@ let cursor_page = cake_knife.CursorPage(
 
 **Note:** Cake Knife provides the types and cursor utilities, but you're responsible for implementing the keyset pagination WHERE clauses in your queries. This gives you full control over your pagination logic while keeping the library lightweight and adapter-agnostic.
 
-## Offset vs Cursor Pagination
-
-### When to use Offset Pagination
-
-- **Pros:**
-  - Simple to implement
-  - Supports jumping to arbitrary pages
-  - Easy for users to understand (page numbers)
-  - Works with any dataset
-
-- **Cons:**
-  - Performance degrades with large offsets
-  - Can show duplicate/missing items if data changes between requests
-  - Database must scan skipped rows
-
-- **Use when:**
-  - Dataset is small to medium sized (< 10,000 rows)
-  - Users need to jump to specific pages
-  - Consistency during pagination isn't critical
-  - Simplicity is more important than performance
-
-### When to use Cursor Pagination
-
-- **Pros:**
-  - Consistent performance regardless of position in dataset
-  - No duplicate/missing items even with concurrent changes
-  - Efficient for infinite scroll interfaces
-
-- **Cons:**
-  - Cannot jump to arbitrary pages
-  - Requires indexed keyset columns
-  - More complex to implement correctly
-
-- **Use when:**
-  - Dataset is large (> 10,000 rows)
-  - Implementing infinite scroll or "load more"
-  - Data changes frequently
-  - Performance at scale is critical
-
 ## API Reference
 
 See the [Hex documentation](https://hexdocs.pm/cake_knife/) for complete API reference.
@@ -233,7 +194,7 @@ See the [Hex documentation](https://hexdocs.pm/cake_knife/) for complete API ref
 
 ## Examples
 
-Check the `test/` directory for comprehensive examples of all features.
+Check the `test/` directory for examples of all features.
 
 ## Development
 
