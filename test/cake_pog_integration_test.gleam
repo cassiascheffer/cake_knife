@@ -88,7 +88,7 @@ pub fn page_six_returns_empty_test() {
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
   // Page 6 should be empty (we only have 50 items)
-  assert list.length(results) == 0
+  assert results == []
 }
 
 pub fn large_offset_works_test() {

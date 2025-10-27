@@ -15,3 +15,19 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
+
+  mysql:
+    image: mysql:8.0
+    container_name: cake_knife_test_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: cake_knife_test
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./scripts/init-db-mysql.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ppassword"]
+      interval: 2s
+      timeout: 5s
+      retries: 10

@@ -36,30 +36,55 @@ if ! command -v docker compose &>/dev/null; then
   exit 1
 fi
 
-# Start the database container
-echo_info "Starting PostgreSQL test database..."
+# Start the database containers
+echo_info "Starting PostgreSQL and MySQL test databases..."
 docker compose -f "$COMPOSE_FILE" up -d
 
-# Wait for the database to be healthy
-echo_info "Waiting for database to be ready..."
+# Wait for PostgreSQL to be healthy
+echo_info "Waiting for PostgreSQL to be ready..."
 MAX_RETRIES=30
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   if docker compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U postgres >/dev/null 2>&1; then
-    echo_info "Database is ready!"
+    echo_info "PostgreSQL is ready!"
     break
   fi
 
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo_error "Database failed to become ready in time"
-    docker compose -f "$COMPOSE_FILE" logs
+    echo_error "PostgreSQL failed to become ready in time"
+    docker compose -f "$COMPOSE_FILE" logs postgres
     docker compose -f "$COMPOSE_FILE" down
     exit 1
   fi
 
-  echo_warn "Waiting for database... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+  echo_warn "Waiting for PostgreSQL... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+  sleep 1
+done
+
+# Wait for MySQL to be healthy
+echo_info "Waiting for MySQL to be ready..."
+RETRY_COUNT=0
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  if docker compose -f "$COMPOSE_FILE" exec -T mysql mysqladmin ping -h localhost -ppassword >/dev/null 2>&1; then
+    echo_info "MySQL is ready!"
+    # Give MySQL a bit more time to fully initialize after reporting ready
+    echo_info "Waiting for MySQL to fully initialize..."
+    sleep 3
+    break
+  fi
+
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo_error "MySQL failed to become ready in time"
+    docker compose -f "$COMPOSE_FILE" logs mysql
+    docker compose -f "$COMPOSE_FILE" down
+    exit 1
+  fi
+
+  echo_warn "Waiting for MySQL... (attempt $RETRY_COUNT/$MAX_RETRIES)"
   sleep 1
 done
 
@@ -73,8 +98,8 @@ else
   TEST_EXIT_CODE=1
 fi
 
-# Clean up - stop the container
-echo_info "Stopping PostgreSQL test database..."
+# Clean up - stop the containers
+echo_info "Stopping test databases..."
 docker compose -f "$COMPOSE_FILE" down
 
 exit $TEST_EXIT_CODE
