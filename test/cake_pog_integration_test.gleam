@@ -2,7 +2,8 @@ import cake/combined
 import cake/fragment
 import cake/select
 import cake/where
-import cake_knife
+import cake_knife/keyset
+import cake_knife/offset
 import gleam/list
 import gleam/option.{Some}
 import gleeunit
@@ -17,7 +18,7 @@ pub fn limit_returns_correct_number_of_rows_test() {
     select.new()
     |> select.from_table("items")
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -30,8 +31,8 @@ pub fn offset_skips_correct_rows_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.limit(5)
-    |> cake_knife.offset(10)
+    |> offset.limit(5)
+    |> offset.offset(10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -45,7 +46,7 @@ pub fn page_one_returns_first_items_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 1, per_page: 10)
+    |> offset.page(page: 1, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -58,7 +59,7 @@ pub fn page_two_returns_second_batch_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 2, per_page: 10)
+    |> offset.page(page: 2, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -71,7 +72,7 @@ pub fn last_page_returns_partial_results_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 5, per_page: 10)
+    |> offset.page(page: 5, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -85,7 +86,7 @@ pub fn page_six_returns_empty_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 6, per_page: 10)
+    |> offset.page(page: 6, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -99,8 +100,8 @@ pub fn large_offset_works_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.limit(5)
-    |> cake_knife.offset(45)
+    |> offset.limit(5)
+    |> offset.offset(45)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -117,7 +118,7 @@ pub fn paginate_with_valid_params_test() {
 
   let assert Ok(paginated_query) =
     query
-    |> cake_knife.paginate(page: 3, per_page: 10, max_per_page: 100)
+    |> offset.paginate(page: 3, per_page: 10, max_per_page: 100)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(paginated_query)
 
@@ -130,7 +131,7 @@ pub fn different_page_sizes_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 2, per_page: 15)
+    |> offset.page(page: 2, per_page: 15)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -144,7 +145,7 @@ pub fn combined_limit_offset_page_test() {
     |> select.from_table("items")
     |> select.order_by_desc("position")
     |> select.to_query
-    |> cake_knife.page(page: 1, per_page: 5)
+    |> offset.page(page: 1, per_page: 5)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -166,7 +167,7 @@ pub fn combined_query_union_ignores_limit_integration_test() {
   let combined_query =
     combined.union(query_a, query_b)
     |> combined.to_query
-    |> cake_knife.limit(5)
+    |> offset.limit(5)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(combined_query)
 
@@ -189,7 +190,7 @@ pub fn combined_query_union_ignores_offset_integration_test() {
   let combined_query =
     combined.union(query_a, query_b)
     |> combined.to_query
-    |> cake_knife.offset(3)
+    |> offset.offset(3)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(combined_query)
 
@@ -212,7 +213,7 @@ pub fn combined_query_union_ignores_page_integration_test() {
   let combined_query =
     combined.union(query_a, query_b)
     |> combined.to_query
-    |> cake_knife.page(page: 2, per_page: 5)
+    |> offset.page(page: 2, per_page: 5)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(combined_query)
 
@@ -235,7 +236,7 @@ pub fn combined_query_union_all_ignores_pagination_integration_test() {
   let combined_query =
     combined.union_all(query_a, query_b)
     |> combined.to_query
-    |> cake_knife.paginate(page: 1, per_page: 5, max_per_page: 100)
+    |> offset.paginate(page: 1, per_page: 5, max_per_page: 100)
 
   let assert Ok(query) = combined_query
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
@@ -259,7 +260,7 @@ pub fn combined_query_intersect_ignores_limit_integration_test() {
   let combined_query =
     combined.intersect(query_a, query_b)
     |> combined.to_query
-    |> cake_knife.limit(3)
+    |> offset.limit(3)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(combined_query)
 
@@ -281,7 +282,7 @@ pub fn combined_query_except_ignores_offset_integration_test() {
   let combined_query =
     combined.except(query_a, query_b)
     |> combined.to_query
-    |> cake_knife.offset(5)
+    |> offset.offset(5)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(combined_query)
 
@@ -296,13 +297,12 @@ pub fn combined_query_except_ignores_offset_integration_test() {
 pub fn keyset_pagination_with_string_values_test() {
   // Test that string values in cursor work correctly
   // This works because the 'name' column is TEXT type
-  let cursor = cake_knife.encode_cursor(["Item 25"])
+  let cursor = keyset.encode_cursor(["Item 25"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("name", cake_knife.Asc, cake_knife.StringType),
+    keyset.KeysetColumn("name", keyset.Asc, keyset.StringType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
 
   let query =
     select.new()
@@ -310,7 +310,7 @@ pub fn keyset_pagination_with_string_values_test() {
     |> select.order_by_asc("name")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -326,23 +326,18 @@ pub fn keyset_pagination_forward_single_column_desc_test() {
     |> select.from_table("items")
     |> select.order_by_desc("created_at")
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page1) = pog_test_helper.setup_and_run(query_page1)
   assert list.length(results_page1) == 10
 
   // For second page, use keyset pagination with cursor from last item
-  let cursor = cake_knife.encode_cursor(["2024-01-05 15:00:00"])
+  let cursor = keyset.encode_cursor(["2024-01-05 15:00:00"])
   let keyset_cols = [
-    cake_knife.KeysetColumn(
-      "created_at",
-      cake_knife.Desc,
-      cake_knife.TimestampType,
-    ),
+    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
 
   let query_page2 =
     select.new()
@@ -350,7 +345,7 @@ pub fn keyset_pagination_forward_single_column_desc_test() {
     |> select.order_by_desc("created_at")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page2) = pog_test_helper.setup_and_run(query_page2)
 
@@ -367,24 +362,19 @@ pub fn keyset_pagination_forward_two_columns_desc_test() {
     |> select.order_by_desc("created_at")
     |> select.order_by_desc("id")
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page1) = pog_test_helper.setup_and_run(query_page1)
   assert list.length(results_page1) == 10
 
   // For second page, use keyset with both columns
-  let cursor = cake_knife.encode_cursor(["2024-01-05 15:00:00", "46"])
+  let cursor = keyset.encode_cursor(["2024-01-05 15:00:00", "46"])
   let keyset_cols = [
-    cake_knife.KeysetColumn(
-      "created_at",
-      cake_knife.Desc,
-      cake_knife.TimestampType,
-    ),
-    cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
+    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
+    keyset.KeysetColumn("id", keyset.Desc, keyset.IntType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
 
   let query_page2 =
     select.new()
@@ -393,7 +383,7 @@ pub fn keyset_pagination_forward_two_columns_desc_test() {
     |> select.order_by_desc("id")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page2) = pog_test_helper.setup_and_run(query_page2)
 
@@ -409,20 +399,19 @@ pub fn keyset_pagination_forward_two_columns_asc_test() {
     |> select.order_by_asc("position")
     |> select.order_by_asc("id")
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page1) = pog_test_helper.setup_and_run(query_page1)
   assert list.length(results_page1) == 10
 
   // For second page
-  let cursor = cake_knife.encode_cursor(["10", "10"])
+  let cursor = keyset.encode_cursor(["10", "10"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Asc, cake_knife.IntType),
-    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
+    keyset.KeysetColumn("position", keyset.Asc, keyset.IntType),
+    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
 
   let query_page2 =
     select.new()
@@ -431,7 +420,7 @@ pub fn keyset_pagination_forward_two_columns_asc_test() {
     |> select.order_by_asc("id")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page2) = pog_test_helper.setup_and_run(query_page2)
 
@@ -441,17 +430,12 @@ pub fn keyset_pagination_forward_two_columns_asc_test() {
 
 pub fn keyset_pagination_backward_single_column_test() {
   // Start from item at position 30
-  let cursor = cake_knife.encode_cursor(["2024-01-03 19:00:00"])
+  let cursor = keyset.encode_cursor(["2024-01-03 19:00:00"])
   let keyset_cols = [
-    cake_knife.KeysetColumn(
-      "created_at",
-      cake_knife.Desc,
-      cake_knife.TimestampType,
-    ),
+    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_before(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_before(cursor, keyset_cols)
 
   // For backward pagination, reverse the order
   let query =
@@ -460,7 +444,7 @@ pub fn keyset_pagination_backward_single_column_test() {
     |> select.order_by_asc("created_at")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -477,20 +461,19 @@ pub fn keyset_pagination_with_mixed_directions_test() {
     |> select.order_by_desc("position")
     |> select.order_by_asc("id")
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page1) = pog_test_helper.setup_and_run(query_page1)
   assert list.length(results_page1) == 10
 
   // For second page with mixed directions
-  let cursor = cake_knife.encode_cursor(["41", "41"])
+  let cursor = keyset.encode_cursor(["41", "41"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Desc, cake_knife.IntType),
-    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
+    keyset.KeysetColumn("position", keyset.Desc, keyset.IntType),
+    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
 
   let query_page2 =
     select.new()
@@ -499,7 +482,7 @@ pub fn keyset_pagination_with_mixed_directions_test() {
     |> select.order_by_asc("id")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page2) = pog_test_helper.setup_and_run(query_page2)
 
@@ -521,7 +504,7 @@ pub fn keyset_pagination_complete_workflow_test() {
     |> select.order_by_asc("position")
     |> select.order_by_asc("id")
     |> select.to_query
-    |> cake_knife.limit(11)
+    |> offset.limit(11)
 
   let assert Ok(results1) = pog_test_helper.setup_and_run(query1)
   assert list.length(results1) == 11
@@ -532,14 +515,13 @@ pub fn keyset_pagination_complete_workflow_test() {
   assert has_next_page == True
 
   // Second page - get items after position 10
-  let cursor = cake_knife.encode_cursor(["10", "10"])
+  let cursor = keyset.encode_cursor(["10", "10"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Asc, cake_knife.IntType),
-    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
+    keyset.KeysetColumn("position", keyset.Asc, keyset.IntType),
+    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
 
   let query2 =
     select.new()
@@ -548,7 +530,7 @@ pub fn keyset_pagination_complete_workflow_test() {
     |> select.order_by_asc("id")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(11)
+    |> offset.limit(11)
 
   let assert Ok(results2) = pog_test_helper.setup_and_run(query2)
 
@@ -563,17 +545,12 @@ pub fn keyset_pagination_complete_workflow_test() {
 
 pub fn keyset_pagination_empty_results_test() {
   // Test pagination with a cursor that should return no results
-  let cursor = cake_knife.encode_cursor(["2024-01-01 09:00:00"])
+  let cursor = keyset.encode_cursor(["2024-01-01 09:00:00"])
   let keyset_cols = [
-    cake_knife.KeysetColumn(
-      "created_at",
-      cake_knife.Asc,
-      cake_knife.TimestampType,
-    ),
+    keyset.KeysetColumn("created_at", keyset.Asc, keyset.TimestampType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
 
   let query =
     select.new()
@@ -581,7 +558,7 @@ pub fn keyset_pagination_empty_results_test() {
     |> select.order_by_asc("created_at")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -598,25 +575,20 @@ pub fn keyset_pagination_three_columns_test() {
     |> select.order_by_desc("position")
     |> select.order_by_desc("id")
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page1) = pog_test_helper.setup_and_run(query_page1)
   assert list.length(results_page1) == 10
 
   // For second page with three columns
-  let cursor = cake_knife.encode_cursor(["2024-01-05 15:00:00", "46", "46"])
+  let cursor = keyset.encode_cursor(["2024-01-05 15:00:00", "46", "46"])
   let keyset_cols = [
-    cake_knife.KeysetColumn(
-      "created_at",
-      cake_knife.Desc,
-      cake_knife.TimestampType,
-    ),
-    cake_knife.KeysetColumn("position", cake_knife.Desc, cake_knife.IntType),
-    cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
+    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
+    keyset.KeysetColumn("position", keyset.Desc, keyset.IntType),
+    keyset.KeysetColumn("id", keyset.Desc, keyset.IntType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
 
   let query_page2 =
     select.new()
@@ -626,7 +598,7 @@ pub fn keyset_pagination_three_columns_test() {
     |> select.order_by_desc("id")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page2) = pog_test_helper.setup_and_run(query_page2)
 
@@ -649,7 +621,7 @@ pub fn keyset_pagination_end_to_end_scenario_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.limit(limit + 1)
+    |> offset.limit(limit + 1)
 
   let assert Ok(first_results) = pog_test_helper.setup_and_run(first_query)
   let first_has_next = list.length(first_results) > limit
@@ -659,16 +631,16 @@ pub fn keyset_pagination_end_to_end_scenario_test() {
   assert list.length(first_data) == 5
 
   // Create end_cursor from last item (position=5, id=5)
-  let first_end_cursor = cake_knife.encode_cursor(["5", "5"])
+  let first_end_cursor = keyset.encode_cursor(["5", "5"])
 
   // Second request: GET /api/items?limit=5&after=cursor
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Asc, cake_knife.IntType),
-    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
+    keyset.KeysetColumn("position", keyset.Asc, keyset.IntType),
+    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
   ]
 
   let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(first_end_cursor, keyset_cols)
+    keyset.keyset_where_after(first_end_cursor, keyset_cols)
 
   let second_query =
     select.new()
@@ -677,7 +649,7 @@ pub fn keyset_pagination_end_to_end_scenario_test() {
     |> select.order_by_asc("id")
     |> select.where(where_clause)
     |> select.to_query
-    |> cake_knife.limit(limit + 1)
+    |> offset.limit(limit + 1)
 
   let assert Ok(second_results) = pog_test_helper.setup_and_run(second_query)
   let second_has_next = list.length(second_results) > limit
@@ -698,7 +670,7 @@ pub fn cursor_page_construction_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.limit(11)
+    |> offset.limit(11)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -709,11 +681,11 @@ pub fn cursor_page_construction_test() {
   let page_data = list.take(results, 10)
 
   // Build cursor page
-  let start_cursor = Some(cake_knife.encode_cursor(["1", "1"]))
-  let end_cursor = Some(cake_knife.encode_cursor(["10", "10"]))
+  let start_cursor = Some(keyset.encode_cursor(["1", "1"]))
+  let end_cursor = Some(keyset.encode_cursor(["10", "10"]))
 
   let cursor_page =
-    cake_knife.CursorPage(
+    keyset.CursorPage(
       data: page_data,
       start_cursor: start_cursor,
       end_cursor: end_cursor,
@@ -736,7 +708,7 @@ pub fn empty_table_pagination_test() {
     select.new()
     |> select.from_table("empty_items")
     |> select.to_query
-    |> cake_knife.page(page: 1, per_page: 10)
+    |> offset.page(page: 1, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_empty_and_run(query)
 
@@ -750,7 +722,7 @@ pub fn single_item_table_pagination_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 1, per_page: 10)
+    |> offset.page(page: 1, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_single_item_and_run(query)
 
@@ -764,7 +736,7 @@ pub fn single_item_page_two_returns_empty_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 2, per_page: 10)
+    |> offset.page(page: 2, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_single_item_and_run(query)
 
@@ -778,7 +750,7 @@ pub fn two_items_pagination_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 1, per_page: 10)
+    |> offset.page(page: 1, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_two_items_and_run(query)
 
@@ -792,7 +764,7 @@ pub fn empty_table_cursor_pagination_test() {
     |> select.from_table("empty_items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results) = pog_test_helper.setup_empty_and_run(query)
 
@@ -806,7 +778,7 @@ pub fn single_item_cursor_pagination_test() {
     |> select.from_table("items")
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.limit(2)
+    |> offset.limit(2)
 
   let assert Ok(results) = pog_test_helper.setup_single_item_and_run(query)
 
@@ -826,7 +798,7 @@ pub fn offset_pagination_with_where_clause_test() {
     |> select.where(where.gt(where.col("position"), where.int(20)))
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 1, per_page: 10)
+    |> offset.page(page: 1, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -842,7 +814,7 @@ pub fn offset_pagination_with_where_clause_second_page_test() {
     |> select.where(where.gt(where.col("position"), where.int(20)))
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 2, per_page: 10)
+    |> offset.page(page: 2, per_page: 10)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -862,7 +834,7 @@ pub fn offset_pagination_with_date_filter_test() {
     ))
     |> select.order_by_asc("position")
     |> select.to_query
-    |> cake_knife.page(page: 1, per_page: 15)
+    |> offset.page(page: 1, per_page: 15)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
@@ -879,20 +851,19 @@ pub fn cursor_pagination_with_where_clause_test() {
     |> select.order_by_asc("position")
     |> select.order_by_asc("id")
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page1) = pog_test_helper.setup_and_run(query_page1)
   assert list.length(results_page1) == 10
 
   // Second page with keyset + WHERE
-  let cursor = cake_knife.encode_cursor(["10", "10"])
+  let cursor = keyset.encode_cursor(["10", "10"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Asc, cake_knife.IntType),
-    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
+    keyset.KeysetColumn("position", keyset.Asc, keyset.IntType),
+    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
   ]
 
-  let assert Ok(where_clause) =
-    cake_knife.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
 
   let query_page2 =
     select.new()
@@ -906,7 +877,7 @@ pub fn cursor_pagination_with_where_clause_test() {
     |> select.order_by_asc("position")
     |> select.order_by_asc("id")
     |> select.to_query
-    |> cake_knife.limit(10)
+    |> offset.limit(10)
 
   let assert Ok(results_page2) = pog_test_helper.setup_and_run(query_page2)
 
@@ -927,7 +898,7 @@ pub fn cursor_pagination_with_complex_where_test() {
     )
     |> select.order_by_desc("position")
     |> select.to_query
-    |> cake_knife.limit(15)
+    |> offset.limit(15)
 
   let assert Ok(results) = pog_test_helper.setup_and_run(query)
 
