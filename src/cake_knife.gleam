@@ -15,11 +15,14 @@
 //// for efficient cursor-based pagination. This is recommended for large
 //// datasets where OFFSET performance becomes an issue.
 
+import cake/fragment
 import cake/internal/read_query
 import cake/select
 import cake/where
 import gleam/bit_array
 import gleam/dynamic/decode
+import gleam/float
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
@@ -72,6 +75,8 @@ pub type KeysetError {
   InvalidCursor(CursorDecodeError)
   /// The cursor has a different number of values than expected columns.
   MismatchedCursorLength(expected: Int, got: Int)
+  /// A cursor value could not be parsed as the expected type.
+  InvalidCursorValue(value: String, expected_type: String)
 }
 
 /// Defines the sort direction for a keyset column.
@@ -82,18 +87,37 @@ pub type OrderDirection {
   Desc
 }
 
+/// Defines the data type of a column for keyset pagination.
+///
+/// This is used to ensure cursor values are properly typed when
+/// generating WHERE clauses, which is required for databases
+/// like PostgreSQL that enforce strict type checking.
+pub type ColumnType {
+  /// String/text column type.
+  StringType
+  /// Integer column type.
+  IntType
+  /// Float/decimal column type.
+  FloatType
+  /// Timestamp column type. Uses SQL CAST for PostgreSQL compatibility.
+  TimestampType
+}
+
 /// Describes a column used in keyset pagination.
 ///
-/// The column name and direction must match your ORDER BY clause.
+/// The column name, direction, and type must match your ORDER BY clause
+/// and database schema.
 ///
 /// ## Examples
 ///
 /// ```gleam
-/// KeysetColumn("created_at", Desc)
-/// KeysetColumn("id", Asc)
+/// KeysetColumn("created_at", Desc, TimestampType)  // For TIMESTAMP columns
+/// KeysetColumn("name", Asc, StringType)             // For TEXT columns
+/// KeysetColumn("id", Asc, IntType)                  // For INTEGER columns
+/// KeysetColumn("score", Desc, FloatType)            // For FLOAT columns
 /// ```
 pub type KeysetColumn {
-  KeysetColumn(name: String, direction: OrderDirection)
+  KeysetColumn(name: String, direction: OrderDirection, column_type: ColumnType)
 }
 
 /// Represents a page of results with metadata for pagination.
@@ -521,7 +545,6 @@ pub fn keyset_where_after(
 
   // Build the WHERE clause by iterating through columns
   build_keyset_where_clause(cols, values, Forward)
-  |> Ok
 }
 
 /// Builds a WHERE clause for keyset pagination going backward (before a cursor).
@@ -579,7 +602,6 @@ pub fn keyset_where_before(
 
   // Build the WHERE clause by iterating through columns (inverted)
   build_keyset_where_clause(cols, values, Backward)
-  |> Ok
 }
 
 // ┌───────────────────────────────────────────────────────────────────────────┐
@@ -614,22 +636,71 @@ fn build_keyset_where_clause(
   columns: List(KeysetColumn),
   values: List(String),
   direction: Direction,
-) -> where.Where {
+) -> Result(where.Where, KeysetError) {
   case columns, values {
-    [], [] -> where.none()
-    [KeysetColumn(col, dir)], [val] ->
+    [], [] -> Ok(where.none())
+    [KeysetColumn(col, dir, col_type)], [val] -> {
       // Single column: simple comparison
-      build_single_comparison(col, val, dir, direction)
-    [KeysetColumn(col, dir), ..rest_cols], [val, ..rest_vals] ->
+      use comparison_where <- result.try(build_single_comparison(
+        col,
+        val,
+        dir,
+        direction,
+        col_type,
+      ))
+      Ok(comparison_where)
+    }
+    [KeysetColumn(col, dir, col_type), ..rest_cols], [val, ..rest_vals] -> {
       // Multiple columns: col < val OR (col = val AND <rest>)
-      where.or([
-        build_single_comparison(col, val, dir, direction),
+      use comparison_where <- result.try(build_single_comparison(
+        col,
+        val,
+        dir,
+        direction,
+        col_type,
+      ))
+      use equality_value <- result.try(parse_value_for_type(val, col_type))
+      use rest_where <- result.try(build_keyset_where_clause(
+        rest_cols,
+        rest_vals,
+        direction,
+      ))
+
+      Ok(where.or([
+        comparison_where,
         where.and([
-          where.eq(where.col(col), where.string(val)),
-          build_keyset_where_clause(rest_cols, rest_vals, direction),
+          where.eq(where.col(col), equality_value),
+          rest_where,
         ]),
-      ])
-    _, _ -> where.none()
+      ]))
+    }
+    _, _ -> Ok(where.none())
+  }
+}
+
+/// Parses a string value and returns the appropriate where value based on column type.
+fn parse_value_for_type(
+  value: String,
+  column_type: ColumnType,
+) -> Result(where.WhereValue, KeysetError) {
+  case column_type {
+    StringType -> Ok(where.string(value))
+    IntType ->
+      int.parse(value)
+      |> result.map(where.int)
+      |> result.replace_error(InvalidCursorValue(value, "integer"))
+    FloatType ->
+      float.parse(value)
+      |> result.map(where.float)
+      |> result.replace_error(InvalidCursorValue(value, "float"))
+    TimestampType -> {
+      // Use literal timestamp with TIMESTAMP cast for PostgreSQL compatibility
+      // This avoids parameter type checking issues in pog
+      // Note: Value must be from trusted cursor (base64 encoded), not user input
+      let timestamp_fragment =
+        fragment.literal("'" <> value <> "'::timestamp")
+      Ok(where.fragment_value(timestamp_fragment))
+    }
   }
 }
 
@@ -639,7 +710,8 @@ fn build_single_comparison(
   value: String,
   column_direction: OrderDirection,
   pagination_direction: Direction,
-) -> where.Where {
+  column_type: ColumnType,
+) -> Result(where.Where, KeysetError) {
   let comparison = case column_direction, pagination_direction {
     Desc, Forward -> where.lt
     Desc, Backward -> where.gt
@@ -647,5 +719,6 @@ fn build_single_comparison(
     Asc, Backward -> where.lt
   }
 
-  comparison(where.col(column), where.string(value))
+  use typed_value <- result.try(parse_value_for_type(value, column_type))
+  Ok(comparison(where.col(column), typed_value))
 }

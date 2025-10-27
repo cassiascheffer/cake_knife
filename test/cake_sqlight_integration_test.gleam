@@ -310,7 +310,9 @@ pub fn keyset_pagination_forward_single_column_desc_test() {
 
   // For second page, use keyset pagination with cursor from last item
   let cursor = cake_knife.encode_cursor(["2024-01-05 15:00:00"])
-  let keyset_cols = [cake_knife.KeysetColumn("created_at", cake_knife.Desc)]
+  let keyset_cols = [
+    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+  ]
 
   let assert Ok(where_clause) =
     cake_knife.keyset_where_after(cursor, keyset_cols)
@@ -346,8 +348,8 @@ pub fn keyset_pagination_forward_two_columns_desc_test() {
   // For second page, use keyset with both columns
   let cursor = cake_knife.encode_cursor(["2024-01-05 15:00:00", "46"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc),
-    cake_knife.KeysetColumn("id", cake_knife.Desc),
+    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+    cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
   ]
 
   let assert Ok(where_clause) =
@@ -384,8 +386,8 @@ pub fn keyset_pagination_forward_two_columns_asc_test() {
   // For second page
   let cursor = cake_knife.encode_cursor(["10", "10"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Asc),
-    cake_knife.KeysetColumn("id", cake_knife.Asc),
+    cake_knife.KeysetColumn("position", cake_knife.Asc, cake_knife.IntType),
+    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
   ]
 
   let assert Ok(where_clause) =
@@ -409,7 +411,9 @@ pub fn keyset_pagination_forward_two_columns_asc_test() {
 pub fn keyset_pagination_backward_single_column_test() {
   // Start from item at position 30
   let cursor = cake_knife.encode_cursor(["2024-01-03 19:00:00"])
-  let keyset_cols = [cake_knife.KeysetColumn("created_at", cake_knife.Desc)]
+  let keyset_cols = [
+    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+  ]
 
   let assert Ok(where_clause) =
     cake_knife.keyset_where_before(cursor, keyset_cols)
@@ -446,8 +450,8 @@ pub fn keyset_pagination_with_mixed_directions_test() {
   // For second page with mixed directions
   let cursor = cake_knife.encode_cursor(["41", "41"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Desc),
-    cake_knife.KeysetColumn("id", cake_knife.Asc),
+    cake_knife.KeysetColumn("position", cake_knife.Desc, cake_knife.IntType),
+    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
   ]
 
   let assert Ok(where_clause) =
@@ -495,8 +499,8 @@ pub fn keyset_pagination_complete_workflow_test() {
   // Second page - get items after position 10
   let cursor = cake_knife.encode_cursor(["10", "10"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Asc),
-    cake_knife.KeysetColumn("id", cake_knife.Asc),
+    cake_knife.KeysetColumn("position", cake_knife.Asc, cake_knife.IntType),
+    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
   ]
 
   let assert Ok(where_clause) =
@@ -525,7 +529,9 @@ pub fn keyset_pagination_complete_workflow_test() {
 pub fn keyset_pagination_with_string_values_test() {
   // Test that string values in cursor work correctly
   let cursor = cake_knife.encode_cursor(["Item 25"])
-  let keyset_cols = [cake_knife.KeysetColumn("name", cake_knife.Asc)]
+  let keyset_cols = [
+    cake_knife.KeysetColumn("name", cake_knife.Asc, cake_knife.StringType),
+  ]
 
   let assert Ok(where_clause) =
     cake_knife.keyset_where_after(cursor, keyset_cols)
@@ -548,7 +554,9 @@ pub fn keyset_pagination_with_string_values_test() {
 pub fn keyset_pagination_empty_results_test() {
   // Test pagination with a cursor that should return no results
   let cursor = cake_knife.encode_cursor(["2024-01-01 09:00:00"])
-  let keyset_cols = [cake_knife.KeysetColumn("created_at", cake_knife.Asc)]
+  let keyset_cols = [
+    cake_knife.KeysetColumn("created_at", cake_knife.Asc, cake_knife.StringType),
+  ]
 
   let assert Ok(where_clause) =
     cake_knife.keyset_where_after(cursor, keyset_cols)
@@ -619,9 +627,9 @@ pub fn keyset_pagination_three_columns_test() {
   // For second page with three columns
   let cursor = cake_knife.encode_cursor(["2024-01-05 15:00:00", "46", "46"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("created_at", cake_knife.Desc),
-    cake_knife.KeysetColumn("position", cake_knife.Desc),
-    cake_knife.KeysetColumn("id", cake_knife.Desc),
+    cake_knife.KeysetColumn("created_at", cake_knife.Desc, cake_knife.StringType),
+    cake_knife.KeysetColumn("position", cake_knife.Desc, cake_knife.IntType),
+    cake_knife.KeysetColumn("id", cake_knife.Desc, cake_knife.IntType),
   ]
 
   let assert Ok(where_clause) =
@@ -672,8 +680,8 @@ pub fn keyset_pagination_end_to_end_scenario_test() {
 
   // Second request: GET /api/items?limit=5&after=cursor
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Asc),
-    cake_knife.KeysetColumn("id", cake_knife.Asc),
+    cake_knife.KeysetColumn("position", cake_knife.Asc, cake_knife.IntType),
+    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
   ]
 
   let assert Ok(where_clause) =
@@ -862,8 +870,8 @@ pub fn cursor_pagination_with_where_clause_test() {
   // Second page with keyset + WHERE
   let cursor = cake_knife.encode_cursor(["10", "10"])
   let keyset_cols = [
-    cake_knife.KeysetColumn("position", cake_knife.Asc),
-    cake_knife.KeysetColumn("id", cake_knife.Asc),
+    cake_knife.KeysetColumn("position", cake_knife.Asc, cake_knife.IntType),
+    cake_knife.KeysetColumn("id", cake_knife.Asc, cake_knife.IntType),
   ]
 
   let assert Ok(where_clause) =
