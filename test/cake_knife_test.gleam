@@ -173,7 +173,8 @@ pub fn page_five_with_different_page_size_test() {
 pub fn paginate_rejects_zero_page_test() {
   let query = select.new() |> select.from_table("users") |> select.to_query
 
-  let result = cake_knife.paginate(query, page: 0, per_page: 10, max_per_page: 100)
+  let result =
+    cake_knife.paginate(query, page: 0, per_page: 10, max_per_page: 100)
 
   result
   |> should.equal(Error(cake_knife.InvalidPage(0)))
@@ -182,7 +183,8 @@ pub fn paginate_rejects_zero_page_test() {
 pub fn paginate_rejects_negative_page_test() {
   let query = select.new() |> select.from_table("users") |> select.to_query
 
-  let result = cake_knife.paginate(query, page: -1, per_page: 10, max_per_page: 100)
+  let result =
+    cake_knife.paginate(query, page: -1, per_page: 10, max_per_page: 100)
 
   result
   |> should.equal(Error(cake_knife.InvalidPage(-1)))
@@ -191,7 +193,8 @@ pub fn paginate_rejects_negative_page_test() {
 pub fn paginate_rejects_zero_per_page_test() {
   let query = select.new() |> select.from_table("users") |> select.to_query
 
-  let result = cake_knife.paginate(query, page: 1, per_page: 0, max_per_page: 100)
+  let result =
+    cake_knife.paginate(query, page: 1, per_page: 0, max_per_page: 100)
 
   result
   |> should.equal(Error(cake_knife.InvalidPerPage(0)))
@@ -200,7 +203,8 @@ pub fn paginate_rejects_zero_per_page_test() {
 pub fn paginate_rejects_per_page_too_large_test() {
   let query = select.new() |> select.from_table("users") |> select.to_query
 
-  let result = cake_knife.paginate(query, page: 1, per_page: 150, max_per_page: 100)
+  let result =
+    cake_knife.paginate(query, page: 1, per_page: 150, max_per_page: 100)
 
   result
   |> should.equal(Error(cake_knife.PerPageTooLarge(150, 100)))
@@ -209,7 +213,8 @@ pub fn paginate_rejects_per_page_too_large_test() {
 pub fn paginate_accepts_valid_inputs_test() {
   let query = select.new() |> select.from_table("users") |> select.to_query
 
-  let result = cake_knife.paginate(query, page: 2, per_page: 10, max_per_page: 100)
+  let result =
+    cake_knife.paginate(query, page: 2, per_page: 10, max_per_page: 100)
 
   case result {
     Ok(q) -> {

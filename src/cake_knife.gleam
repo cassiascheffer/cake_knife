@@ -221,7 +221,11 @@ pub fn offset(query qry: ReadQuery, count cnt: Int) -> ReadQuery {
 /// |> cake_knife.page(page: 2, per_page: 10)
 /// // Equivalent to: limit(10) |> offset(10)
 /// ```
-pub fn page(query qry: ReadQuery, page pg: Int, per_page per_pg: Int) -> ReadQuery {
+pub fn page(
+  query qry: ReadQuery,
+  page pg: Int,
+  per_page per_pg: Int,
+) -> ReadQuery {
   let offset_amount = { pg - 1 } * per_pg
   qry
   |> limit(per_pg)
@@ -287,7 +291,10 @@ pub fn paginate(
 /// calculate_total_pages(total_count: 0, per_page: 10)
 /// // -> 0
 /// ```
-pub fn calculate_total_pages(total_count total: Int, per_page per_pg: Int) -> Int {
+pub fn calculate_total_pages(
+  total_count total: Int,
+  per_page per_pg: Int,
+) -> Int {
   case per_pg <= 0 {
     True -> 0
     False -> {
@@ -415,7 +422,9 @@ pub fn encode_cursor(values vals: List(String)) -> Cursor {
 /// decode_cursor(bad_cursor)
 /// // -> Error(InvalidBase64)
 /// ```
-pub fn decode_cursor(cursor c: Cursor) -> Result(List(String), CursorDecodeError) {
+pub fn decode_cursor(
+  cursor c: Cursor,
+) -> Result(List(String), CursorDecodeError) {
   use decoded_bits <- result.try(
     c.value
     |> bit_array.base64_decode
