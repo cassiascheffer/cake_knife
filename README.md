@@ -11,7 +11,7 @@ A Gleam library providing ergonomic pagination utilities for [Cake](https://hexd
 - **Page metadata** - Automatic calculation of total pages, has_next, has_previous
 - **Validation** - Built-in validation for page parameters with helpful errors
 - **Type-safe** - Fully typed with Gleam's type system
-- **Keyset pagination** - Automatic WHERE clause generation for efficient cursor-based pagination
+- **Cursor pagination** - Automatic WHERE clause generation for efficient cursor-based pagination
 - **Adapter-agnostic** - Works with all Cake adapters (Postgres, SQLite, MySQL, MariaDB)
 
 ## Installation
@@ -26,7 +26,7 @@ gleam add cake_knife
 
 ```gleam
 import cake/select
-import cake_knife/offset/offset
+import cake_knife/offset
 
 pub fn get_users_page(page: Int) {
   select.new()
@@ -37,13 +37,13 @@ pub fn get_users_page(page: Int) {
 }
 ```
 
-### Keyset Pagination
+### Cursor Pagination
 
 ```gleam
 import cake/select
-import cake_knife/offset/keyset
+import cake_knife/cursor
 
-pub fn get_posts_after(cursor: Option(keyset.Cursor), limit: Int) {
+pub fn get_posts_after(cursor: Option(cursor.Cursor), limit: Int) {
   let base_query =
     select.new()
     |> select.from_table("posts")
@@ -52,10 +52,10 @@ pub fn get_posts_after(cursor: Option(keyset.Cursor), limit: Int) {
   case cursor {
     None -> base_query
     Some(c) -> {
-      let keyset_cols = [
-        keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType)
+      let cursor_cols = [
+        cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType)
       ]
-      case keyset.keyset_where_after(c, keyset_cols) {
+      case cursor.where_after(c, cursor_cols) {
         Ok(where_clause) -> base_query |> select.where(where_clause)
         Error(_) -> base_query
       }
@@ -144,30 +144,30 @@ let page = offset.new_page(
 
 ## Cursor Pagination
 
-Cake Knife provides automatic WHERE clause generation for cursor-based (keyset) pagination. Cursor pagination is more efficient for large datasets as it uses keyset values instead of OFFSET, providing consistent performance regardless of page depth.
+Cake Knife provides automatic WHERE clause generation for cursor-based pagination. Cursor pagination is more efficient for large datasets as it uses cursor values instead of OFFSET, providing consistent performance regardless of page depth.
 
 ### Encoding and Decoding Cursors
 
 ```gleam
-import cake_knife/keyset
+import cake_knife/cursor
 import gleam/option.{Some, None}
 
-// Encode keyset values into an opaque cursor
-let cursor = keyset.encode_cursor(["2024-01-15T10:30:00Z", "12345"])
+// Encode cursor values into an opaque cursor
+let cursor = cursor.encode(["2024-01-15T10:30:00Z", "12345"])
 
 // Decode a cursor back to values
-case keyset.decode_cursor(cursor) {
+case cursor.decode(cursor) {
   Ok(values) -> {
     // values == ["2024-01-15T10:30:00Z", "12345"]
-    // Use these values in your WHERE clause for keyset pagination
+    // Use these values in your WHERE clause for cursor pagination
   }
-  Error(keyset.InvalidBase64) -> {
+  Error(cursor.InvalidBase64) -> {
     // Handle invalid base64
   }
-  Error(keyset.InvalidJson) -> {
+  Error(cursor.InvalidJson) -> {
     // Handle invalid JSON
   }
-  Error(keyset.NotAnArray) -> {
+  Error(cursor.NotAnArray) -> {
     // Handle wrong JSON structure
   }
 }
@@ -176,14 +176,14 @@ case keyset.decode_cursor(cursor) {
 ### Working with CursorPage
 
 ```gleam
-import cake_knife/keyset
+import cake_knife/cursor
 import gleam/option.{Some}
 
 // After executing your cursor-based query, construct a CursorPage
-let first_item_cursor = keyset.encode_cursor(["2024-01-15", "100"])
-let last_item_cursor = keyset.encode_cursor(["2024-01-20", "150"])
+let first_item_cursor = cursor.encode(["2024-01-15", "100"])
+let last_item_cursor = cursor.encode(["2024-01-20", "150"])
 
-let cursor_page = keyset.CursorPage(
+let cursor_page = cursor.CursorPage(
   data: items,
   start_cursor: Some(first_item_cursor),
   end_cursor: Some(last_item_cursor),
@@ -192,14 +192,14 @@ let cursor_page = keyset.CursorPage(
 )
 ```
 
-### Implementing Keyset Pagination with Postgres/Pog
+### Implementing Cursor Pagination with Postgres/Pog
 
-Cake Knife provides helper functions to automatically build keyset pagination WHERE clauses. Here's a complete example using Postgres with pog for posts ordered by `(created_at DESC, id DESC)`.
+Cake Knife provides helper functions to automatically build cursor pagination WHERE clauses. Here's a complete example using Postgres with pog for posts ordered by `(created_at DESC, id DESC)`.
 
 ```gleam
 import cake/adapter/postgres
 import cake/select
-import cake_knife/keyset
+import cake_knife/cursor
 import cake_knife/offset
 import gleam/dynamic/decode
 import gleam/int
@@ -220,16 +220,16 @@ fn post_decoder() {
   decode.success(Post(id:, created_at:, title:))
 }
 
-// Define keyset columns once (matches your ORDER BY)
-const keyset_columns = [
-  keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
-  keyset.KeysetColumn("id", keyset.Desc, keyset.IntType),
+// Define cursor columns once (matches your ORDER BY)
+const cursor_columns = [
+  cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
+  cursor.KeysetColumn("id", cursor.Desc, cursor.IntType),
 ]
 
 // Paginate posts going forward (after a cursor)
 pub fn get_posts_after(
   db: postgres.Connection,
-  after_cursor: Option(keyset.Cursor),
+  after_cursor: Option(cursor.Cursor),
   limit: Int,
 ) {
   // Start with base query ordered by (created_at DESC, id DESC)
@@ -239,12 +239,12 @@ pub fn get_posts_after(
     |> select.order_by_desc("created_at")
     |> select.order_by_desc("id")
 
-  // Add WHERE clause for keyset pagination using helper
+  // Add WHERE clause for cursor pagination using helper
   let query = case after_cursor {
     None -> base_query
-    Some(cursor) -> {
+    Some(c) -> {
       use where_clause <- result.try(
-        keyset.keyset_where_after(cursor, keyset_columns)
+        cursor.where_after(c, cursor_columns)
       )
       Ok(base_query |> select.where(where_clause))
     }
@@ -275,7 +275,7 @@ pub fn get_posts_after(
   // Create cursors from first and last items
   let start_cursor = case list.first(posts) {
     Ok(post) ->
-      Some(keyset.encode_cursor([
+      Some(cursor.encode([
         post.created_at,
         int.to_string(post.id),
       ]))
@@ -283,7 +283,7 @@ pub fn get_posts_after(
   }
   let end_cursor = case list.last(posts) {
     Ok(post) ->
-      Some(keyset.encode_cursor([
+      Some(cursor.encode([
         post.created_at,
         int.to_string(post.id),
       ]))
@@ -291,7 +291,7 @@ pub fn get_posts_after(
   }
 
   // Build CursorPage
-  Ok(keyset.CursorPage(
+  Ok(cursor.CursorPage(
     data: posts,
     start_cursor: start_cursor,
     end_cursor: end_cursor,
@@ -303,18 +303,18 @@ pub fn get_posts_after(
 
 **Key Points:**
 
-- Use `keyset_where_after()` to automatically build the WHERE clause
+- Use `where_after()` to automatically build the WHERE clause
 - Define `KeysetColumn` list matching your ORDER BY clause
 - The helper works with all database adapters (Postgres, SQLite, MySQL, MariaDB)
 - Fetch `limit + 1` items to determine if there's a next/previous page
 - Cursor values must be strings, so convert numbers with `int.to_string()`
 - For best performance, create an index: `CREATE INDEX idx_posts_pagination ON posts(created_at DESC, id DESC)`
 
-**For backward pagination**, use `keyset_where_before()` with reversed ORDER BY:
+**For backward pagination**, use `where_before()` with reversed ORDER BY:
 
 ```gleam
 use where_clause <- result.try(
-  keyset.keyset_where_before(before_cursor, keyset_columns)
+  cursor.where_before(before_cursor, cursor_columns)
 )
 
 select.new()
@@ -332,8 +332,7 @@ See the [Hex documentation](https://hexdocs.pm/cake_knife/) for complete API ref
 ### Modules
 
 - **`cake_knife/offset`** - Offset-based pagination (LIMIT/OFFSET)
-- **`cake_knife/keyset`** - Keyset (cursor-based) pagination
-- **`cake_knife`** - Re-exports all functions from both modules (for backwards compatibility)
+- **`cake_knife/cursor`** - Cursor-based pagination
 
 ### Key Functions
 
@@ -345,13 +344,13 @@ See the [Hex documentation](https://hexdocs.pm/cake_knife/) for complete API ref
 - `calculate_total_pages(total_count, per_page)` - Calculate number of pages
 - `new_page(data, page, per_page, total_count)` - Create Page with metadata
 
-**Keyset Pagination (`cake_knife/keyset`):**
-- `encode_cursor(values)` - Encode keyset values into an opaque cursor
-- `decode_cursor(cursor)` - Decode a cursor back to keyset values
-- `cursor_from_string(value)` - Create a cursor from a string
-- `cursor_to_string(cursor)` - Extract the string value from a cursor
-- `keyset_where_after(cursor, columns)` - Build WHERE clause for forward pagination
-- `keyset_where_before(cursor, columns)` - Build WHERE clause for backward pagination
+**Cursor Pagination (`cake_knife/cursor`):**
+- `encode(values)` - Encode cursor values into an opaque cursor
+- `decode(cursor)` - Decode a cursor back to cursor values
+- `from_string(value)` - Create a cursor from a string
+- `to_string(cursor)` - Extract the string value from a cursor
+- `where_after(cursor, columns)` - Build WHERE clause for forward pagination
+- `where_before(cursor, columns)` - Build WHERE clause for backward pagination
 
 ### Types
 
@@ -360,14 +359,14 @@ See the [Hex documentation](https://hexdocs.pm/cake_knife/) for complete API ref
 - `PaginationError` - Validation errors for pagination parameters
 - `ReadQuery` - Type alias for Cake's ReadQuery type
 
-**Keyset Pagination (`cake_knife/keyset`):**
+**Cursor Pagination (`cake_knife/cursor`):**
 - `Cursor` - Opaque cursor for cursor-based pagination
 - `CursorPage(a)` - Cursor-based pagination result
-- `KeysetColumn` - Column definition for keyset pagination (name, direction, and type)
+- `KeysetColumn` - Column definition for cursor pagination (name, direction, and type)
 - `OrderDirection` - Sort direction (Asc or Desc)
 - `ColumnType` - Data type of a column (StringType, IntType, FloatType, TimestampType)
 - `CursorDecodeError` - Errors that can occur when decoding cursors
-- `KeysetError` - Errors that can occur during keyset pagination
+- `CursorError` - Errors that can occur during cursor pagination
 - `ReadQuery` - Type alias for Cake's ReadQuery type
 
 ## Examples
@@ -378,7 +377,7 @@ Check the `test/` directory for examples of all features.
 
 ### Running Tests
 
-This project uses PostgreSQL for integration tests. Tests are run in a Docker container to ensure consistent behaviour across environments.
+This project uses PostgreSQL and MySQL for integration tests. Tests are run in Docker containers to ensure consistent behaviour across environments.
 
 **Prerequisites:**
 - Docker and Docker Compose installed and running
@@ -386,31 +385,40 @@ This project uses PostgreSQL for integration tests. Tests are run in a Docker co
 **Running the test suite:**
 
 ```sh
-# Run tests with Docker database (recommended)
+# Run tests with Docker databases (recommended)
 ./scripts/test.sh
 
-# Or manually manage the database:
-docker compose up -d          # Start PostgreSQL
+# Or manually manage the databases:
+docker compose up -d          # Start PostgreSQL and MySQL
 gleam test                    # Run tests
-docker compose down           # Stop PostgreSQL
+docker compose down           # Stop databases
 ```
 
 The test script automatically:
-1. Starts a PostgreSQL 17.6 container
-2. Waits for the database to be ready
+1. Starts PostgreSQL 17.6 and MySQL 8.0 containers
+2. Waits for both databases to be ready
 3. Runs the test suite
-4. Cleans up the container
+4. Cleans up the containers
 
 **Environment Variables:**
 
-You can customise the database connection using environment variables:
+You can customise the database connections using environment variables:
 
+**PostgreSQL:**
 ```sh
-POSTGRES_HOST=localhost    # Default: localhost
-POSTGRES_PORT=5432         # Default: 5432
-POSTGRES_USER=postgres     # Default: postgres
-POSTGRES_PASSWORD=postgres # Default: postgres
-POSTGRES_DB=cake_knife_test # Default: cake_knife_test
+POSTGRES_HOST=localhost      # Default: localhost
+POSTGRES_PORT=5432           # Default: 5432
+POSTGRES_USER=postgres       # Default: postgres
+POSTGRES_PASSWORD=postgres   # Default: postgres
+POSTGRES_DB=cake_knife_test  # Default: cake_knife_test
+```
+
+**MySQL:**
+```sh
+MYSQL_HOST=localhost         # Default: localhost
+MYSQL_PORT=3306              # Default: 3306
+MYSQL_PASSWORD=password      # Default: password
+MYSQL_DB=cake_knife_test     # Default: cake_knife_test
 ```
 
 **Other Development Commands:**

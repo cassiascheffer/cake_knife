@@ -2,7 +2,7 @@ import cake/combined
 import cake/fragment
 import cake/select
 import cake/where
-import cake_knife/keyset
+import cake_knife/cursor
 import cake_knife/offset
 import gleam/list
 import gleam/option.{Some}
@@ -294,15 +294,15 @@ pub fn combined_query_except_ignores_offset_integration_test() {
 // │  Cursor Pagination Tests                                                  │
 // └───────────────────────────────────────────────────────────────────────────┘
 
-pub fn keyset_pagination_with_string_values_test() {
+pub fn cursor_pagination_with_string_values_test() {
   // Test that string values in cursor work correctly
   // This works because the 'name' column is TEXT type
-  let cursor = keyset.encode_cursor(["Item 25"])
-  let keyset_cols = [
-    keyset.KeysetColumn("name", keyset.Asc, keyset.StringType),
+  let cursor = cursor.encode(["Item 25"])
+  let cursor_cols = [
+    cursor.KeysetColumn("name", cursor.Asc, cursor.StringType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -319,7 +319,7 @@ pub fn keyset_pagination_with_string_values_test() {
   assert list.length(results) <= 10
 }
 
-pub fn keyset_pagination_forward_single_column_desc_test() {
+pub fn cursor_pagination_forward_single_column_desc_test() {
   // Query first page
   let query_page1 =
     select.new()
@@ -331,13 +331,13 @@ pub fn keyset_pagination_forward_single_column_desc_test() {
   let assert Ok(results_page1) = pog_test_helper.setup_and_run(query_page1)
   assert list.length(results_page1) == 10
 
-  // For second page, use keyset pagination with cursor from last item
-  let cursor = keyset.encode_cursor(["2024-01-05 15:00:00"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
+  // For second page, use cursor pagination with cursor from last item
+  let cursor = cursor.encode(["2024-01-05 15:00:00"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query_page2 =
     select.new()
@@ -354,7 +354,7 @@ pub fn keyset_pagination_forward_single_column_desc_test() {
   assert list.length(results_page2) <= 10
 }
 
-pub fn keyset_pagination_forward_two_columns_desc_test() {
+pub fn cursor_pagination_forward_two_columns_desc_test() {
   // Query first page ordered by (created_at DESC, id DESC)
   let query_page1 =
     select.new()
@@ -367,14 +367,14 @@ pub fn keyset_pagination_forward_two_columns_desc_test() {
   let assert Ok(results_page1) = pog_test_helper.setup_and_run(query_page1)
   assert list.length(results_page1) == 10
 
-  // For second page, use keyset with both columns
-  let cursor = keyset.encode_cursor(["2024-01-05 15:00:00", "46"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
-    keyset.KeysetColumn("id", keyset.Desc, keyset.IntType),
+  // For second page, use cursor with both columns
+  let cursor = cursor.encode(["2024-01-05 15:00:00", "46"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
+    cursor.KeysetColumn("id", cursor.Desc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query_page2 =
     select.new()
@@ -391,7 +391,7 @@ pub fn keyset_pagination_forward_two_columns_desc_test() {
   assert list.length(results_page2) <= 10
 }
 
-pub fn keyset_pagination_forward_two_columns_asc_test() {
+pub fn cursor_pagination_forward_two_columns_asc_test() {
   // Query first page ordered by (position ASC, id ASC)
   let query_page1 =
     select.new()
@@ -405,13 +405,13 @@ pub fn keyset_pagination_forward_two_columns_asc_test() {
   assert list.length(results_page1) == 10
 
   // For second page
-  let cursor = keyset.encode_cursor(["10", "10"])
-  let keyset_cols = [
-    keyset.KeysetColumn("position", keyset.Asc, keyset.IntType),
-    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
+  let cursor = cursor.encode(["10", "10"])
+  let cursor_cols = [
+    cursor.KeysetColumn("position", cursor.Asc, cursor.IntType),
+    cursor.KeysetColumn("id", cursor.Asc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query_page2 =
     select.new()
@@ -428,14 +428,14 @@ pub fn keyset_pagination_forward_two_columns_asc_test() {
   assert list.length(results_page2) == 10
 }
 
-pub fn keyset_pagination_backward_single_column_test() {
+pub fn cursor_pagination_backward_single_column_test() {
   // Start from item at position 30
-  let cursor = keyset.encode_cursor(["2024-01-03 19:00:00"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
+  let cursor = cursor.encode(["2024-01-03 19:00:00"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_before(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_before(cursor, cursor_cols)
 
   // For backward pagination, reverse the order
   let query =
@@ -453,7 +453,7 @@ pub fn keyset_pagination_backward_single_column_test() {
   assert list.length(results) <= 10
 }
 
-pub fn keyset_pagination_with_mixed_directions_test() {
+pub fn cursor_pagination_with_mixed_directions_test() {
   // Query with mixed directions (position DESC, id ASC)
   let query_page1 =
     select.new()
@@ -467,13 +467,13 @@ pub fn keyset_pagination_with_mixed_directions_test() {
   assert list.length(results_page1) == 10
 
   // For second page with mixed directions
-  let cursor = keyset.encode_cursor(["41", "41"])
-  let keyset_cols = [
-    keyset.KeysetColumn("position", keyset.Desc, keyset.IntType),
-    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
+  let cursor = cursor.encode(["41", "41"])
+  let cursor_cols = [
+    cursor.KeysetColumn("position", cursor.Desc, cursor.IntType),
+    cursor.KeysetColumn("id", cursor.Asc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query_page2 =
     select.new()
@@ -490,7 +490,7 @@ pub fn keyset_pagination_with_mixed_directions_test() {
   assert list.length(results_page2) <= 10
 }
 
-pub fn keyset_pagination_complete_workflow_test() {
+pub fn cursor_pagination_complete_workflow_test() {
   // Simulate a complete pagination workflow:
   // 1. Fetch first page
   // 2. Get cursor from last item
@@ -515,13 +515,13 @@ pub fn keyset_pagination_complete_workflow_test() {
   assert has_next_page == True
 
   // Second page - get items after position 10
-  let cursor = keyset.encode_cursor(["10", "10"])
-  let keyset_cols = [
-    keyset.KeysetColumn("position", keyset.Asc, keyset.IntType),
-    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
+  let cursor = cursor.encode(["10", "10"])
+  let cursor_cols = [
+    cursor.KeysetColumn("position", cursor.Asc, cursor.IntType),
+    cursor.KeysetColumn("id", cursor.Asc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query2 =
     select.new()
@@ -543,14 +543,14 @@ pub fn keyset_pagination_complete_workflow_test() {
   assert list.length(page1_items) + list.length(page2_items) == 20
 }
 
-pub fn keyset_pagination_empty_results_test() {
+pub fn cursor_pagination_empty_results_test() {
   // Test pagination with a cursor that should return no results
-  let cursor = keyset.encode_cursor(["2024-01-01 09:00:00"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Asc, keyset.TimestampType),
+  let cursor = cursor.encode(["2024-01-01 09:00:00"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Asc, cursor.TimestampType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -566,7 +566,7 @@ pub fn keyset_pagination_empty_results_test() {
   assert list.length(results) == 10
 }
 
-pub fn keyset_pagination_three_columns_test() {
+pub fn cursor_pagination_three_columns_test() {
   // Test with three columns for more complex pagination
   let query_page1 =
     select.new()
@@ -581,14 +581,14 @@ pub fn keyset_pagination_three_columns_test() {
   assert list.length(results_page1) == 10
 
   // For second page with three columns
-  let cursor = keyset.encode_cursor(["2024-01-05 15:00:00", "46", "46"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
-    keyset.KeysetColumn("position", keyset.Desc, keyset.IntType),
-    keyset.KeysetColumn("id", keyset.Desc, keyset.IntType),
+  let cursor = cursor.encode(["2024-01-05 15:00:00", "46", "46"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
+    cursor.KeysetColumn("position", cursor.Desc, cursor.IntType),
+    cursor.KeysetColumn("id", cursor.Desc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query_page2 =
     select.new()
@@ -606,7 +606,7 @@ pub fn keyset_pagination_three_columns_test() {
   assert list.length(results_page2) <= 10
 }
 
-pub fn keyset_pagination_end_to_end_scenario_test() {
+pub fn cursor_pagination_end_to_end_scenario_test() {
   // Simulate a real-world API scenario:
   // - Client requests first page
   // - Server returns data with end_cursor
@@ -631,16 +631,16 @@ pub fn keyset_pagination_end_to_end_scenario_test() {
   assert list.length(first_data) == 5
 
   // Create end_cursor from last item (position=5, id=5)
-  let first_end_cursor = keyset.encode_cursor(["5", "5"])
+  let first_end_cursor = cursor.encode(["5", "5"])
 
   // Second request: GET /api/items?limit=5&after=cursor
-  let keyset_cols = [
-    keyset.KeysetColumn("position", keyset.Asc, keyset.IntType),
-    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
+  let cursor_cols = [
+    cursor.KeysetColumn("position", cursor.Asc, cursor.IntType),
+    cursor.KeysetColumn("id", cursor.Asc, cursor.IntType),
   ]
 
   let assert Ok(where_clause) =
-    keyset.keyset_where_after(first_end_cursor, keyset_cols)
+    cursor.where_after(first_end_cursor, cursor_cols)
 
   let second_query =
     select.new()
@@ -664,7 +664,7 @@ pub fn keyset_pagination_end_to_end_scenario_test() {
 }
 
 pub fn cursor_page_construction_test() {
-  // Test building a CursorPage from query results (without using keyset WHERE)
+  // Test building a CursorPage from query results (without using cursor WHERE)
   let query =
     select.new()
     |> select.from_table("items")
@@ -681,11 +681,11 @@ pub fn cursor_page_construction_test() {
   let page_data = list.take(results, 10)
 
   // Build cursor page
-  let start_cursor = Some(keyset.encode_cursor(["1", "1"]))
-  let end_cursor = Some(keyset.encode_cursor(["10", "10"]))
+  let start_cursor = Some(cursor.encode(["1", "1"]))
+  let end_cursor = Some(cursor.encode(["10", "10"]))
 
   let cursor_page =
-    keyset.CursorPage(
+    cursor.CursorPage(
       data: page_data,
       start_cursor: start_cursor,
       end_cursor: end_cursor,
@@ -758,7 +758,7 @@ pub fn two_items_pagination_test() {
 }
 
 pub fn empty_table_cursor_pagination_test() {
-  // Test keyset pagination on empty table
+  // Test cursor pagination on empty table
   let query =
     select.new()
     |> select.from_table("empty_items")
@@ -772,7 +772,7 @@ pub fn empty_table_cursor_pagination_test() {
 }
 
 pub fn single_item_cursor_pagination_test() {
-  // Test keyset pagination with single item - no next page
+  // Test cursor pagination with single item - no next page
   let query =
     select.new()
     |> select.from_table("items")
@@ -843,7 +843,7 @@ pub fn offset_pagination_with_date_filter_test() {
 }
 
 pub fn cursor_pagination_with_where_clause_test() {
-  // Combine WHERE filter with keyset pagination
+  // Combine WHERE filter with cursor pagination
   let query_page1 =
     select.new()
     |> select.from_table("items")
@@ -856,14 +856,14 @@ pub fn cursor_pagination_with_where_clause_test() {
   let assert Ok(results_page1) = pog_test_helper.setup_and_run(query_page1)
   assert list.length(results_page1) == 10
 
-  // Second page with keyset + WHERE
-  let cursor = keyset.encode_cursor(["10", "10"])
-  let keyset_cols = [
-    keyset.KeysetColumn("position", keyset.Asc, keyset.IntType),
-    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
+  // Second page with cursor + WHERE
+  let cursor = cursor.encode(["10", "10"])
+  let cursor_cols = [
+    cursor.KeysetColumn("position", cursor.Asc, cursor.IntType),
+    cursor.KeysetColumn("id", cursor.Asc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query_page2 =
     select.new()
@@ -886,7 +886,7 @@ pub fn cursor_pagination_with_where_clause_test() {
 }
 
 pub fn cursor_pagination_with_complex_where_test() {
-  // Test keyset pagination with multiple WHERE conditions
+  // Test cursor pagination with multiple WHERE conditions
   let query =
     select.new()
     |> select.from_table("items")

@@ -1,7 +1,7 @@
 import cake
 import cake/internal/dialect
 import cake/select
-import cake_knife/keyset
+import cake_knife/cursor
 import cake_knife/offset
 import gleeunit
 
@@ -276,79 +276,79 @@ pub fn single_page_result_test() {
 
 pub fn cursor_roundtrip_test() {
   let values = ["2024-01-15T10:30:00Z", "12345"]
-  let cursor = keyset.encode_cursor(values)
-  let result = keyset.decode_cursor(cursor)
+  let cursor = cursor.encode(values)
+  let result = cursor.decode(cursor)
 
   assert result == Ok(values)
 }
 
 pub fn cursor_with_single_value_test() {
   let values = ["single"]
-  let cursor = keyset.encode_cursor(values)
-  let result = keyset.decode_cursor(cursor)
+  let cursor = cursor.encode(values)
+  let result = cursor.decode(cursor)
 
   assert result == Ok(values)
 }
 
 pub fn cursor_with_multiple_values_test() {
   let values = ["first", "second", "third", "fourth"]
-  let cursor = keyset.encode_cursor(values)
-  let result = keyset.decode_cursor(cursor)
+  let cursor = cursor.encode(values)
+  let result = cursor.decode(cursor)
 
   assert result == Ok(values)
 }
 
 pub fn cursor_with_empty_list_test() {
   let values = []
-  let cursor = keyset.encode_cursor(values)
-  let result = keyset.decode_cursor(cursor)
+  let cursor = cursor.encode(values)
+  let result = cursor.decode(cursor)
 
   assert result == Ok(values)
 }
 
 pub fn cursor_with_special_characters_test() {
   let values = ["hello \"world\"", "unicode: 🎉", "newline:\n", "tab:\t"]
-  let cursor = keyset.encode_cursor(values)
-  let result = keyset.decode_cursor(cursor)
+  let cursor = cursor.encode(values)
+  let result = cursor.decode(cursor)
 
   assert result == Ok(values)
 }
 
 pub fn decode_invalid_base64_test() {
-  let bad_cursor = keyset.cursor_from_string("not!valid@base64#")
-  let result = keyset.decode_cursor(bad_cursor)
+  let bad_cursor = cursor.from_string("not!valid@base64#")
+  let result = cursor.decode(bad_cursor)
 
-  assert result == Error(keyset.InvalidBase64)
+  assert result == Error(cursor.InvalidBase64)
 }
 
 pub fn decode_invalid_json_test() {
-  let bad_cursor = keyset.cursor_from_string("aW52YWxpZCBqc29u")
-  let result = keyset.decode_cursor(bad_cursor)
+  let bad_cursor = cursor.from_string("aW52YWxpZCBqc29u")
+  let result = cursor.decode(bad_cursor)
 
-  assert result == Error(keyset.InvalidJson)
+  assert result == Error(cursor.InvalidJson)
 }
 
 pub fn decode_non_array_json_test() {
-  let bad_cursor = keyset.cursor_from_string("eyJub3QiOiJhbiBhcnJheSJ9")
-  let result = keyset.decode_cursor(bad_cursor)
+  let bad_cursor = cursor.from_string("eyJub3QiOiJhbiBhcnJheSJ9")
+  let result = cursor.decode(bad_cursor)
 
-  assert result == Error(keyset.NotAnArray)
+  assert result == Error(cursor.NotAnArray)
 }
 
 pub fn cursor_is_opaque_test() {
-  let cursor = keyset.encode_cursor(["test"])
-  let cursor_string = keyset.cursor_to_string(cursor)
+  let cursor = cursor.encode(["test"])
+  let cursor_string = cursor.to_string(cursor)
 
   assert cursor_string != "test"
 }
 
-pub fn keyset_where_after_single_column_desc_test() {
-  let cursor = keyset.encode_cursor(["2024-01-15"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
+pub fn cursor_where_after_single_column_desc_test() {
+  let cursor = cursor.encode(["2024-01-15"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -364,13 +364,13 @@ pub fn keyset_where_after_single_column_desc_test() {
   assert sql == "SELECT * FROM posts WHERE created_at < '2024-01-15'::timestamp"
 }
 
-pub fn keyset_where_after_single_column_asc_test() {
-  let cursor = keyset.encode_cursor(["2024-01-15"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Asc, keyset.TimestampType),
+pub fn cursor_where_after_single_column_asc_test() {
+  let cursor = cursor.encode(["2024-01-15"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Asc, cursor.TimestampType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -386,14 +386,14 @@ pub fn keyset_where_after_single_column_asc_test() {
   assert sql == "SELECT * FROM posts WHERE created_at > '2024-01-15'::timestamp"
 }
 
-pub fn keyset_where_after_two_columns_desc_test() {
-  let cursor = keyset.encode_cursor(["2024-01-15", "100"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
-    keyset.KeysetColumn("id", keyset.Desc, keyset.IntType),
+pub fn cursor_where_after_two_columns_desc_test() {
+  let cursor = cursor.encode(["2024-01-15", "100"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
+    cursor.KeysetColumn("id", cursor.Desc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -410,14 +410,14 @@ pub fn keyset_where_after_two_columns_desc_test() {
     == "SELECT * FROM posts WHERE (created_at < '2024-01-15'::timestamp OR created_at = '2024-01-15'::timestamp AND id < $1)"
 }
 
-pub fn keyset_where_after_two_columns_asc_test() {
-  let cursor = keyset.encode_cursor(["2024-01-15", "100"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Asc, keyset.TimestampType),
-    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
+pub fn cursor_where_after_two_columns_asc_test() {
+  let cursor = cursor.encode(["2024-01-15", "100"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Asc, cursor.TimestampType),
+    cursor.KeysetColumn("id", cursor.Asc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -434,15 +434,15 @@ pub fn keyset_where_after_two_columns_asc_test() {
     == "SELECT * FROM posts WHERE (created_at > '2024-01-15'::timestamp OR created_at = '2024-01-15'::timestamp AND id > $1)"
 }
 
-pub fn keyset_where_after_three_columns_desc_test() {
-  let cursor = keyset.encode_cursor(["2024-01-15", "100", "42"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
-    keyset.KeysetColumn("id", keyset.Desc, keyset.IntType),
-    keyset.KeysetColumn("version", keyset.Desc, keyset.IntType),
+pub fn cursor_where_after_three_columns_desc_test() {
+  let cursor = cursor.encode(["2024-01-15", "100", "42"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
+    cursor.KeysetColumn("id", cursor.Desc, cursor.IntType),
+    cursor.KeysetColumn("version", cursor.Desc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -459,13 +459,13 @@ pub fn keyset_where_after_three_columns_desc_test() {
     == "SELECT * FROM posts WHERE (created_at < '2024-01-15'::timestamp OR created_at = '2024-01-15'::timestamp AND (id < $1 OR id = $2 AND version < $3))"
 }
 
-pub fn keyset_where_before_single_column_desc_test() {
-  let cursor = keyset.encode_cursor(["2024-01-15"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
+pub fn cursor_where_before_single_column_desc_test() {
+  let cursor = cursor.encode(["2024-01-15"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_before(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_before(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -481,14 +481,14 @@ pub fn keyset_where_before_single_column_desc_test() {
   assert sql == "SELECT * FROM posts WHERE created_at > '2024-01-15'::timestamp"
 }
 
-pub fn keyset_where_before_two_columns_desc_test() {
-  let cursor = keyset.encode_cursor(["2024-01-15", "100"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
-    keyset.KeysetColumn("id", keyset.Desc, keyset.IntType),
+pub fn cursor_where_before_two_columns_desc_test() {
+  let cursor = cursor.encode(["2024-01-15", "100"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
+    cursor.KeysetColumn("id", cursor.Desc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_before(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_before(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -505,14 +505,14 @@ pub fn keyset_where_before_two_columns_desc_test() {
     == "SELECT * FROM posts WHERE (created_at > '2024-01-15'::timestamp OR created_at = '2024-01-15'::timestamp AND id > $1)"
 }
 
-pub fn keyset_where_after_mixed_directions_test() {
-  let cursor = keyset.encode_cursor(["2024-01-15", "100"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.TimestampType),
-    keyset.KeysetColumn("id", keyset.Asc, keyset.IntType),
+pub fn cursor_where_after_mixed_directions_test() {
+  let cursor = cursor.encode(["2024-01-15", "100"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.TimestampType),
+    cursor.KeysetColumn("id", cursor.Asc, cursor.IntType),
   ]
 
-  let assert Ok(where_clause) = keyset.keyset_where_after(cursor, keyset_cols)
+  let assert Ok(where_clause) = cursor.where_after(cursor, cursor_cols)
 
   let query =
     select.new()
@@ -529,25 +529,25 @@ pub fn keyset_where_after_mixed_directions_test() {
     == "SELECT * FROM posts WHERE (created_at < '2024-01-15'::timestamp OR created_at = '2024-01-15'::timestamp AND id > $1)"
 }
 
-pub fn keyset_where_after_mismatched_cursor_length_test() {
-  let cursor = keyset.encode_cursor(["2024-01-15"])
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.StringType),
-    keyset.KeysetColumn("id", keyset.Desc, keyset.IntType),
+pub fn cursor_where_after_mismatched_cursor_length_test() {
+  let cursor = cursor.encode(["2024-01-15"])
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.StringType),
+    cursor.KeysetColumn("id", cursor.Desc, cursor.IntType),
   ]
 
-  let result = keyset.keyset_where_after(cursor, keyset_cols)
+  let result = cursor.where_after(cursor, cursor_cols)
 
-  assert result == Error(keyset.MismatchedCursorLength(expected: 2, got: 1))
+  assert result == Error(cursor.MismatchedCursorLength(expected: 2, got: 1))
 }
 
-pub fn keyset_where_after_invalid_cursor_test() {
-  let bad_cursor = keyset.cursor_from_string("not-valid-base64!")
-  let keyset_cols = [
-    keyset.KeysetColumn("created_at", keyset.Desc, keyset.StringType),
+pub fn cursor_where_after_invalid_cursor_test() {
+  let bad_cursor = cursor.from_string("not-valid-base64!")
+  let cursor_cols = [
+    cursor.KeysetColumn("created_at", cursor.Desc, cursor.StringType),
   ]
 
-  let result = keyset.keyset_where_after(bad_cursor, keyset_cols)
+  let result = cursor.where_after(bad_cursor, cursor_cols)
 
-  assert result == Error(keyset.InvalidCursor(keyset.InvalidBase64))
+  assert result == Error(cursor.InvalidCursor(cursor.InvalidBase64))
 }

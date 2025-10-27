@@ -1,11 +1,11 @@
-//// Keyset (cursor-based) pagination for Cake SQL queries.
+//// Cursor-based pagination for Cake SQL queries.
 ////
-//// This module provides efficient cursor-based pagination using keyset values
+//// This module provides efficient cursor-based pagination using cursor values
 //// instead of OFFSET. This is recommended for large datasets where OFFSET
 //// performance becomes an issue.
 ////
-//// Use `encode_cursor()`, `decode_cursor()`, `keyset_where_after()`, and
-//// `keyset_where_before()` for cursor-based pagination, along with the
+//// Use `encode()`, `decode()`, `where_after()`, and
+//// `where_before()` for cursor-based pagination, along with the
 //// `CursorPage(a)` type for working with paginated results.
 
 import cake/fragment
@@ -29,9 +29,9 @@ import gleam/result
 ///
 /// ```gleam
 /// import cake/select
-/// import cake_knife/keyset
+/// import cake_knife/cursor
 ///
-/// let query: keyset.ReadQuery =
+/// let query: cursor.ReadQuery =
 ///   select.new()
 ///   |> select.from_table("users")
 ///   |> select.to_query
@@ -51,8 +51,8 @@ pub type CursorDecodeError {
   InvalidArrayElement
 }
 
-/// Errors that can occur during keyset pagination.
-pub type KeysetError {
+/// Errors that can occur during cursor pagination.
+pub type CursorError {
   /// The cursor could not be decoded.
   InvalidCursor(CursorDecodeError)
   /// The cursor has a different number of values than expected columns.
@@ -61,7 +61,7 @@ pub type KeysetError {
   InvalidCursorValue(value: String, expected_type: String)
 }
 
-/// Defines the sort direction for a keyset column.
+/// Defines the sort direction for a cursor column.
 pub type OrderDirection {
   /// Ascending order (smallest to largest).
   Asc
@@ -69,7 +69,7 @@ pub type OrderDirection {
   Desc
 }
 
-/// Defines the data type of a column for keyset pagination.
+/// Defines the data type of a column for cursor pagination.
 ///
 /// This is used to ensure cursor values are properly typed when
 /// generating WHERE clauses, which is required for databases
@@ -85,7 +85,7 @@ pub type ColumnType {
   TimestampType
 }
 
-/// Describes a column used in keyset pagination.
+/// Describes a column used in cursor pagination.
 ///
 /// The column name, direction, and type must match your ORDER BY clause
 /// and database schema.
@@ -104,7 +104,7 @@ pub type KeysetColumn {
 
 /// An opaque cursor for cursor-based pagination.
 ///
-/// Cursors encode position information (typically keyset values like
+/// Cursors encode position information (typically values like
 /// timestamps and IDs) to enable efficient pagination without OFFSET.
 pub opaque type Cursor {
   Cursor(value: String)
@@ -113,7 +113,7 @@ pub opaque type Cursor {
 /// Represents a page of results using cursor-based pagination.
 ///
 /// Cursor-based pagination is more efficient than offset-based pagination
-/// for large datasets, as it uses keyset values instead of OFFSET.
+/// for large datasets, as it uses cursor values instead of OFFSET.
 ///
 /// ## Fields
 ///
@@ -147,7 +147,7 @@ pub type CursorPage(a) {
 /// Creates a cursor from a string value.
 ///
 /// The string should typically be a base64-encoded representation
-/// of keyset values, but this function accepts any string.
+/// of cursor values, but this function accepts any string.
 ///
 /// This is useful when receiving cursor tokens from API requests
 /// or other external sources.
@@ -155,10 +155,10 @@ pub type CursorPage(a) {
 /// ## Examples
 ///
 /// ```gleam
-/// let cursor = cursor_from_string("WyIyMDI0LTAxLTE1IiwiMTIzNDUiXQ==")
+/// let cursor = from_string("WyIyMDI0LTAxLTE1IiwiMTIzNDUiXQ==")
 /// // Can now decode this cursor to get the original values
 /// ```
-pub fn cursor_from_string(value val: String) -> Cursor {
+pub fn from_string(value val: String) -> Cursor {
   Cursor(val)
 }
 
@@ -170,30 +170,30 @@ pub fn cursor_from_string(value val: String) -> Cursor {
 /// ## Examples
 ///
 /// ```gleam
-/// let cursor = encode_cursor(["2024-01-15", "12345"])
-/// let cursor_string = cursor_to_string(cursor)
+/// let cursor = encode(["2024-01-15", "12345"])
+/// let cursor_string = to_string(cursor)
 /// // cursor_string can now be sent to clients as an opaque token
 /// ```
-pub fn cursor_to_string(cursor c: Cursor) -> String {
+pub fn to_string(cursor c: Cursor) -> String {
   c.value
 }
 
 /// Encodes a list of values into an opaque cursor token.
 ///
 /// The values are JSON-encoded and base64-encoded to create an opaque cursor.
-/// This is useful for cursor-based pagination where you want to encode keyset
+/// This is useful for cursor-based pagination where you want to encode
 /// values (like timestamp and ID) into a single cursor token.
 ///
 /// ## Examples
 ///
 /// ```gleam
-/// encode_cursor(["2024-01-15T10:30:00Z", "12345"])
+/// encode(["2024-01-15T10:30:00Z", "12345"])
 /// // -> Cursor with base64-encoded JSON array
 ///
-/// encode_cursor([])
+/// encode([])
 /// // -> Cursor with base64-encoded empty array
 /// ```
-pub fn encode_cursor(values vals: List(String)) -> Cursor {
+pub fn encode(values vals: List(String)) -> Cursor {
   vals
   |> list.map(json.string)
   |> json.array(of: fn(x) { x })
@@ -205,21 +205,21 @@ pub fn encode_cursor(values vals: List(String)) -> Cursor {
 
 /// Decodes a cursor token back into a list of values.
 ///
-/// This reverses the encoding done by `encode_cursor()`, returning the
+/// This reverses the encoding done by `encode()`, returning the
 /// original list of string values or an error if the cursor is invalid.
 ///
 /// ## Examples
 ///
 /// ```gleam
-/// let cursor = encode_cursor(["2024-01-15T10:30:00Z", "12345"])
-/// decode_cursor(cursor)
+/// let cursor = encode(["2024-01-15T10:30:00Z", "12345"])
+/// decode(cursor)
 /// // -> Ok(["2024-01-15T10:30:00Z", "12345"])
 ///
-/// let bad_cursor = cursor_from_string("not-valid-base64!")
-/// decode_cursor(bad_cursor)
+/// let bad_cursor = from_string("not-valid-base64!")
+/// decode(bad_cursor)
 /// // -> Error(InvalidBase64)
 /// ```
-pub fn decode_cursor(
+pub fn decode(
   cursor c: Cursor,
 ) -> Result(List(String), CursorDecodeError) {
   use decoded_bits <- result.try(
@@ -238,10 +238,10 @@ pub fn decode_cursor(
   |> result.map_error(fn(_) { NotAnArray })
 }
 
-/// Builds a WHERE clause for keyset pagination going forward (after a cursor).
+/// Builds a WHERE clause for cursor pagination going forward (after a cursor).
 ///
 /// This function automatically generates the appropriate WHERE clause for
-/// keyset pagination based on your cursor and column definitions. It works
+/// cursor pagination based on your cursor and column definitions. It works
 /// with all database adapters by using expanded OR/AND conditions.
 ///
 /// ## Parameters
@@ -253,7 +253,7 @@ pub fn decode_cursor(
 ///
 /// ```gleam
 /// // For ORDER BY created_at DESC, id DESC
-/// let keyset_cols = [
+/// let cursor_cols = [
 ///   KeysetColumn("created_at", Desc, TimestampType),
 ///   KeysetColumn("id", Desc, IntType),
 /// ]
@@ -261,7 +261,7 @@ pub fn decode_cursor(
 /// case after_cursor {
 ///   Some(cursor) -> {
 ///     use where_clause <- result.try(
-///       keyset_where_after(cursor, keyset_cols)
+///       where_after(cursor, cursor_cols)
 ///     )
 ///     base_query |> select.where(where_clause)
 ///   }
@@ -276,12 +276,12 @@ pub fn decode_cursor(
 ///
 /// For ascending columns `(created_at ASC, id ASC)` with cursor values `[t, i]`,
 /// generates: `WHERE created_at > t OR (created_at = t AND id > i)`
-pub fn keyset_where_after(
+pub fn where_after(
   cursor c: Cursor,
   columns cols: List(KeysetColumn),
-) -> Result(where.Where, KeysetError) {
+) -> Result(where.Where, CursorError) {
   use values <- result.try(
-    decode_cursor(c)
+    decode(c)
     |> result.map_error(InvalidCursor),
   )
 
@@ -294,13 +294,13 @@ pub fn keyset_where_after(
   )
 
   // Build the WHERE clause by iterating through columns
-  build_keyset_where_clause(cols, values, Forward)
+  build_cursor_where_clause(cols, values, Forward)
 }
 
-/// Builds a WHERE clause for keyset pagination going backward (before a cursor).
+/// Builds a WHERE clause for cursor pagination going backward (before a cursor).
 ///
 /// This function automatically generates the appropriate WHERE clause for
-/// keyset pagination going in reverse. It works with all database adapters.
+/// cursor pagination going in reverse. It works with all database adapters.
 ///
 /// ## Parameters
 ///
@@ -311,13 +311,13 @@ pub fn keyset_where_after(
 ///
 /// ```gleam
 /// // For ORDER BY created_at DESC, id DESC
-/// let keyset_cols = [
+/// let cursor_cols = [
 ///   KeysetColumn("created_at", Desc, TimestampType),
 ///   KeysetColumn("id", Desc, IntType),
 /// ]
 ///
 /// use where_clause <- result.try(
-///   keyset_where_before(cursor, keyset_cols)
+///   where_before(cursor, cursor_cols)
 /// )
 ///
 /// // Note: Reverse the ORDER BY for backward pagination
@@ -332,13 +332,13 @@ pub fn keyset_where_after(
 /// For descending columns `(created_at DESC, id DESC)` with cursor values `[t, i]`,
 /// generates: `WHERE created_at > t OR (created_at = t AND id > i)`
 ///
-/// This is the inverse of `keyset_where_after`.
-pub fn keyset_where_before(
+/// This is the inverse of `where_after`.
+pub fn where_before(
   cursor c: Cursor,
   columns cols: List(KeysetColumn),
-) -> Result(where.Where, KeysetError) {
+) -> Result(where.Where, CursorError) {
   use values <- result.try(
-    decode_cursor(c)
+    decode(c)
     |> result.map_error(InvalidCursor),
   )
 
@@ -351,7 +351,7 @@ pub fn keyset_where_before(
   )
 
   // Build the WHERE clause by iterating through columns (inverted)
-  build_keyset_where_clause(cols, values, Backward)
+  build_cursor_where_clause(cols, values, Backward)
 }
 
 // ┌───────────────────────────────────────────────────────────────────────────┐
@@ -374,7 +374,7 @@ fn result_guard(
   }
 }
 
-/// Builds a keyset WHERE clause using expanded OR/AND conditions.
+/// Builds a cursor WHERE clause using expanded OR/AND conditions.
 ///
 /// For columns (a DESC, b DESC) and values (x, y), generates:
 /// Forward: a < x OR (a = x AND b < y)
@@ -382,11 +382,11 @@ fn result_guard(
 ///
 /// For columns (a, b, c) and values (x, y, z), generates:
 /// a < x OR (a = x AND (b < y OR (b = y AND c < z)))
-fn build_keyset_where_clause(
+fn build_cursor_where_clause(
   columns: List(KeysetColumn),
   values: List(String),
   direction: Direction,
-) -> Result(where.Where, KeysetError) {
+) -> Result(where.Where, CursorError) {
   case columns, values {
     [], [] -> Ok(where.none())
     [KeysetColumn(col, dir, col_type)], [val] -> {
@@ -410,7 +410,7 @@ fn build_keyset_where_clause(
         col_type,
       ))
       use equality_value <- result.try(parse_value_for_type(val, col_type))
-      use rest_where <- result.try(build_keyset_where_clause(
+      use rest_where <- result.try(build_cursor_where_clause(
         rest_cols,
         rest_vals,
         direction,
@@ -434,7 +434,7 @@ fn build_keyset_where_clause(
 fn parse_value_for_type(
   value: String,
   column_type: ColumnType,
-) -> Result(where.WhereValue, KeysetError) {
+) -> Result(where.WhereValue, CursorError) {
   case column_type {
     StringType -> Ok(where.string(value))
     IntType ->
@@ -462,7 +462,7 @@ fn build_single_comparison(
   column_direction: OrderDirection,
   pagination_direction: Direction,
   column_type: ColumnType,
-) -> Result(where.Where, KeysetError) {
+) -> Result(where.Where, CursorError) {
   let comparison = case column_direction, pagination_direction {
     Desc, Forward -> where.lt
     Desc, Backward -> where.gt
