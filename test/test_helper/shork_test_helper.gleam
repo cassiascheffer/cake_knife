@@ -47,3 +47,43 @@ pub fn setup_and_run(query) {
 
   query |> mysql.run_read_query(decode.dynamic, conn)
 }
+
+pub fn setup_empty_and_run(query) {
+  use conn <- with_local_test_connection
+
+  let _ = "DROP TABLE IF EXISTS empty_items" |> mysql.execute_raw_sql(conn)
+  let _ =
+    "CREATE TABLE empty_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL,
+      position INT NOT NULL
+    )"
+    |> mysql.execute_raw_sql(conn)
+
+  // No inserts - table is empty
+
+  query |> mysql.run_read_query(decode.dynamic, conn)
+}
+
+pub fn setup_single_item_and_run(query) {
+  use conn <- with_local_test_connection
+
+  let _ =
+    test_data.drop_items_table_if_exists() |> mysql.execute_raw_sql(conn)
+  let _ = test_data.create_items_table_mysql() |> mysql.execute_raw_sql(conn)
+  let _ = test_data.insert_single_item() |> mysql.execute_raw_sql(conn)
+
+  query |> mysql.run_read_query(decode.dynamic, conn)
+}
+
+pub fn setup_two_items_and_run(query) {
+  use conn <- with_local_test_connection
+
+  let _ =
+    test_data.drop_items_table_if_exists() |> mysql.execute_raw_sql(conn)
+  let _ = test_data.create_items_table_mysql() |> mysql.execute_raw_sql(conn)
+  let _ = test_data.insert_two_items() |> mysql.execute_raw_sql(conn)
+
+  query |> mysql.run_read_query(decode.dynamic, conn)
+}

@@ -73,3 +73,44 @@ pub fn setup_and_run(query) {
 
   query |> postgres.run_read_query(decode.dynamic, conn)
 }
+
+pub fn setup_empty_and_run(query) {
+  use conn <- with_local_test_connection
+
+  let _ =
+    "DROP TABLE IF EXISTS empty_items" |> postgres.execute_raw_sql(conn)
+  let _ =
+    "CREATE TABLE empty_items (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL,
+      position INTEGER NOT NULL
+    )"
+    |> postgres.execute_raw_sql(conn)
+
+  // No inserts - table is empty
+
+  query |> postgres.run_read_query(decode.dynamic, conn)
+}
+
+pub fn setup_single_item_and_run(query) {
+  use conn <- with_local_test_connection
+
+  let _ =
+    test_data.drop_items_table_if_exists() |> postgres.execute_raw_sql(conn)
+  let _ = test_data.create_items_table() |> postgres.execute_raw_sql(conn)
+  let _ = test_data.insert_single_item() |> postgres.execute_raw_sql(conn)
+
+  query |> postgres.run_read_query(decode.dynamic, conn)
+}
+
+pub fn setup_two_items_and_run(query) {
+  use conn <- with_local_test_connection
+
+  let _ =
+    test_data.drop_items_table_if_exists() |> postgres.execute_raw_sql(conn)
+  let _ = test_data.create_items_table() |> postgres.execute_raw_sql(conn)
+  let _ = test_data.insert_two_items() |> postgres.execute_raw_sql(conn)
+
+  query |> postgres.run_read_query(decode.dynamic, conn)
+}

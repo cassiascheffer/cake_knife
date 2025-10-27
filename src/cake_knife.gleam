@@ -14,14 +14,6 @@
 //// Use `Cursor`, `CursorPage(a)`, `encode_cursor()`, and `decode_cursor()`
 //// for efficient cursor-based pagination. This is recommended for large
 //// datasets where OFFSET performance becomes an issue.
-////
-//// ## Performance Considerations
-////
-//// - **Offset pagination**: Simple but slower with large offsets. Database
-////   must scan all skipped rows. Best for small to medium datasets.
-//// - **Cursor pagination**: Consistent performance regardless of position.
-////   Requires indexed keyset columns. Best for large datasets and infinite
-////   scroll interfaces.
 
 import cake/internal/read_query
 import cake/select

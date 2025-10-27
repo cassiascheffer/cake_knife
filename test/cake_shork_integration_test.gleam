@@ -699,3 +699,209 @@ pub fn keyset_pagination_end_to_end_scenario_test() {
   let total_items = list.length(first_data) + list.length(second_data)
   assert total_items == 10
 }
+
+// ┌───────────────────────────────────────────────────────────────────────────┐
+// │  Edge Case Tests                                                          │
+// └───────────────────────────────────────────────────────────────────────────┘
+
+pub fn empty_table_pagination_test() {
+  // Test pagination on an empty table
+  let query =
+    select.new()
+    |> select.from_table("empty_items")
+    |> select.to_query
+    |> cake_knife.page(page: 1, per_page: 10)
+
+  let assert Ok(results) = shork_test_helper.setup_empty_and_run(query)
+
+  assert results == []
+}
+
+pub fn single_item_table_pagination_test() {
+  // Test pagination with exactly one item
+  let query =
+    select.new()
+    |> select.from_table("items")
+    |> select.order_by_asc("position")
+    |> select.to_query
+    |> cake_knife.page(page: 1, per_page: 10)
+
+  let assert Ok(results) = shork_test_helper.setup_single_item_and_run(query)
+
+  assert list.length(results) == 1
+}
+
+pub fn single_item_page_two_returns_empty_test() {
+  // Test that page 2 is empty when there's only 1 item
+  let query =
+    select.new()
+    |> select.from_table("items")
+    |> select.order_by_asc("position")
+    |> select.to_query
+    |> cake_knife.page(page: 2, per_page: 10)
+
+  let assert Ok(results) = shork_test_helper.setup_single_item_and_run(query)
+
+  assert results == []
+}
+
+pub fn two_items_pagination_test() {
+  // Test pagination with exactly two items
+  let query =
+    select.new()
+    |> select.from_table("items")
+    |> select.order_by_asc("position")
+    |> select.to_query
+    |> cake_knife.page(page: 1, per_page: 10)
+
+  let assert Ok(results) = shork_test_helper.setup_two_items_and_run(query)
+
+  assert list.length(results) == 2
+}
+
+pub fn empty_table_cursor_pagination_test() {
+  // Test keyset pagination on empty table
+  let query =
+    select.new()
+    |> select.from_table("empty_items")
+    |> select.order_by_asc("position")
+    |> select.to_query
+    |> cake_knife.limit(10)
+
+  let assert Ok(results) = shork_test_helper.setup_empty_and_run(query)
+
+  assert results == []
+}
+
+pub fn single_item_cursor_pagination_test() {
+  // Test keyset pagination with single item - no next page
+  let query =
+    select.new()
+    |> select.from_table("items")
+    |> select.order_by_asc("position")
+    |> select.to_query
+    |> cake_knife.limit(2)
+
+  let assert Ok(results) = shork_test_helper.setup_single_item_and_run(query)
+
+  // Should get 1 item, indicating no next page
+  assert list.length(results) == 1
+}
+
+// ┌───────────────────────────────────────────────────────────────────────────┐
+// │  Pagination with WHERE Clause Tests                                       │
+// └───────────────────────────────────────────────────────────────────────────┘
+
+pub fn offset_pagination_with_where_clause_test() {
+  // Filter by position > 20, then paginate
+  let query =
+    select.new()
+    |> select.from_table("items")
+    |> select.where(where.gt(where.col("position"), where.int(20)))
+    |> select.order_by_asc("position")
+    |> select.to_query
+    |> cake_knife.page(page: 1, per_page: 10)
+
+  let assert Ok(results) = shork_test_helper.setup_and_run(query)
+
+  // Should get 10 items (positions 21-30)
+  assert list.length(results) == 10
+}
+
+pub fn offset_pagination_with_where_clause_second_page_test() {
+  // Filter by position > 20, then get second page
+  let query =
+    select.new()
+    |> select.from_table("items")
+    |> select.where(where.gt(where.col("position"), where.int(20)))
+    |> select.order_by_asc("position")
+    |> select.to_query
+    |> cake_knife.page(page: 2, per_page: 10)
+
+  let assert Ok(results) = shork_test_helper.setup_and_run(query)
+
+  // Should get 10 items (positions 31-40)
+  assert list.length(results) == 10
+}
+
+pub fn offset_pagination_with_date_filter_test() {
+  // Filter by created_at >= 2024-01-03
+  let query =
+    select.new()
+    |> select.from_table("items")
+    |> select.where(
+      where.gte(
+        where.col("created_at"),
+        where.string("2024-01-03 00:00:00"),
+      ),
+    )
+    |> select.order_by_asc("position")
+    |> select.to_query
+    |> cake_knife.page(page: 1, per_page: 15)
+
+  let assert Ok(results) = shork_test_helper.setup_and_run(query)
+
+  // Should get 15 items (positions 21-35, dates from 2024-01-03 onwards)
+  assert list.length(results) == 15
+}
+
+pub fn cursor_pagination_with_where_clause_test() {
+  // Combine WHERE filter with keyset pagination
+  let query_page1 =
+    select.new()
+    |> select.from_table("items")
+    |> select.where(where.lte(where.col("position"), where.int(30)))
+    |> select.order_by_asc("position")
+    |> select.order_by_asc("id")
+    |> select.to_query
+    |> cake_knife.limit(10)
+
+  let assert Ok(results_page1) = shork_test_helper.setup_and_run(query_page1)
+  assert list.length(results_page1) == 10
+
+  // Second page with keyset + WHERE
+  let cursor = cake_knife.encode_cursor(["10", "10"])
+  let keyset_cols = [
+    cake_knife.KeysetColumn("position", cake_knife.Asc),
+    cake_knife.KeysetColumn("id", cake_knife.Asc),
+  ]
+
+  let assert Ok(where_clause) =
+    cake_knife.keyset_where_after(cursor, keyset_cols)
+
+  let query_page2 =
+    select.new()
+    |> select.from_table("items")
+    |> select.where(where.and([
+      where.lte(where.col("position"), where.int(30)),
+      where_clause,
+    ]))
+    |> select.order_by_asc("position")
+    |> select.order_by_asc("id")
+    |> select.to_query
+    |> cake_knife.limit(10)
+
+  let assert Ok(results_page2) = shork_test_helper.setup_and_run(query_page2)
+
+  // Should get 10 items (positions 11-20)
+  assert list.length(results_page2) == 10
+}
+
+pub fn cursor_pagination_with_complex_where_test() {
+  // Test keyset pagination with multiple WHERE conditions
+  let query =
+    select.new()
+    |> select.from_table("items")
+    |> select.where(where.and([
+      where.gt(where.col("position"), where.int(10)),
+      where.lte(where.col("position"), where.int(40)),
+    ]))
+    |> select.order_by_desc("position")
+    |> select.to_query
+    |> cake_knife.limit(15)
+
+  let assert Ok(results) = shork_test_helper.setup_and_run(query)
+
+  // Should get 15 items (positions 40 down to 26)
+  assert list.length(results) == 15
+}

@@ -82,3 +82,14 @@ pub fn insert_items_rows() -> String {
     ('Item 49', '2024-01-05 18:00:00', 49),
     ('Item 50', '2024-01-05 19:00:00', 50)"
 }
+
+pub fn insert_single_item() -> String {
+  "INSERT INTO items (name, created_at, position) VALUES
+    ('Item 1', '2024-01-01 10:00:00', 1)"
+}
+
+pub fn insert_two_items() -> String {
+  "INSERT INTO items (name, created_at, position) VALUES
+    ('Item 1', '2024-01-01 10:00:00', 1),
+    ('Item 2', '2024-01-01 11:00:00', 2)"
+}
