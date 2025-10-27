@@ -219,9 +219,7 @@ pub fn encode(values vals: List(String)) -> Cursor {
 /// decode(bad_cursor)
 /// // -> Error(InvalidBase64)
 /// ```
-pub fn decode(
-  cursor c: Cursor,
-) -> Result(List(String), CursorDecodeError) {
+pub fn decode(cursor c: Cursor) -> Result(List(String), CursorDecodeError) {
   use decoded_bits <- result.try(
     c.value
     |> bit_array.base64_decode
